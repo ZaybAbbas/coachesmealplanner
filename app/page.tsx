@@ -8,7 +8,7 @@ import {
   Clock, Lightbulb, Wand2
 } from 'lucide-react';
 
-// The execution environment provides the key at runtime when set to an empty string.
+// Your live Google API Key is hardcoded here for Vercel
 const apiKey = "AIzaSyAl7lPUEumEc7pdXCgDrDQuBHxe7xUEy_E"; 
 
 const LOGO_URL = "https://firebasestorage.googleapis.com/v0/b/accountability-566c2.firebasestorage.app/o/088529ce-52f4-4ef7-a65f-0923d5901386.png?alt=media";
@@ -209,7 +209,8 @@ export default function App() {
 
     while (retries <= maxRetries) {
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+        // Guaranteeing the public model and your API key
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -242,7 +243,7 @@ export default function App() {
       } catch (err: any) {
         console.error("Full Error:", err);
         
-        // INSTANT FAIL: If it's a 4xx error (404, 403, 400), do NOT retry. Show the raw truth instantly.
+        // INSTANT FAIL: Display the raw error instantly on screen if Google blocks it
         if (err.message.includes("404") || err.message.includes("403") || err.message.includes("400")) {
           setError(`🚨 SERVER ERROR: ${err.message}`);
           setView('dashboard');
