@@ -8,8 +8,6 @@ import {
   Clock, Lightbulb, Wand2
 } from 'lucide-react';
 
-// Your live Google API Key is hardcoded here for Vercel
-const apiKey = "AIzaSyAl7lPUEumEc7pdXCgDrDQuBHxe7xUEy_E"; 
 
 const LOGO_URL = "https://firebasestorage.googleapis.com/v0/b/accountability-566c2.firebasestorage.app/o/088529ce-52f4-4ef7-a65f-0923d5901386.png?alt=media";
 
@@ -209,7 +207,7 @@ export default function App() {
     while (retries <= maxRetries) {
       try {
         // Guaranteeing the public model and your API key
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
