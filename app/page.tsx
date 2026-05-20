@@ -8,7 +8,7 @@ import {
   Clock, Lightbulb, Wand2
 } from 'lucide-react';
 
-// IMPORTANT: Paste your actual Google AI Studio key between the quotation marks below!
+// The execution environment provides the key at runtime when set to an empty string.
 const apiKey = "AIzaSyAl7lPUEumEc7pdXCgDrDQuBHxe7xUEy_E"; 
 
 const LOGO_URL = "https://firebasestorage.googleapis.com/v0/b/accountability-566c2.firebasestorage.app/o/088529ce-52f4-4ef7-a65f-0923d5901386.png?alt=media";
@@ -87,15 +87,12 @@ export default function App() {
 
   const isFormValid = () => {
     if (!formData.clientName?.trim()) return false;
-    
     const w = parseFloat(formData.weight);
     const h = parseFloat(formData.height);
     const a = parseFloat(formData.age);
-    
     if (isNaN(w) || w <= 0) return false;
     if (isNaN(h) || h <= 0) return false;
     if (isNaN(a) || a <= 0) return false;
-    
     return true;
   };
 
@@ -211,20 +208,17 @@ export default function App() {
     const delays = [1000, 2000, 4000, 8000, 16000];
 
     while (retries <= maxRetries) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: controller.signal
+          body: JSON.stringify(payload)
         });
-        
-        clearTimeout(timeoutId);
 
-        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+        if (!response.ok) {
+          const errorData = await response.text();
+          throw new Error(`Google API Error (${response.status}): ${errorData}`);
+        }
         
         const data = await response.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -243,15 +237,24 @@ export default function App() {
           setView('preview');
           return;
         } else {
-          throw new Error("Invalid response structure");
+          throw new Error("Invalid response structure from AI.");
         }
-      } catch (err) {
-        clearTimeout(timeoutId);
-        if (retries === maxRetries) {
-          setError("Failed to generate the plan after multiple attempts. Please ensure your connection is stable and try again.");
+      } catch (err: any) {
+        console.error("Full Error:", err);
+        
+        // INSTANT FAIL: If it's a 4xx error (404, 403, 400), do NOT retry. Show the raw truth instantly.
+        if (err.message.includes("404") || err.message.includes("403") || err.message.includes("400")) {
+          setError(`🚨 SERVER ERROR: ${err.message}`);
           setView('dashboard');
           return;
         }
+
+        if (retries === maxRetries) {
+          setError(`🚨 FINAL ERROR: ${err.message}`);
+          setView('dashboard');
+          return;
+        }
+        
         await new Promise(resolve => setTimeout(resolve, delays[retries]));
         retries++;
       }
@@ -498,7 +501,7 @@ export default function App() {
         {error && (
           <div className="mb-8 bg-red-50 text-red-800 p-5 rounded-xl flex items-start border border-red-200 shadow-sm">
             <AlertCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5" />
-            <p className="font-medium">{error}</p>
+            <p className="font-medium break-words whitespace-pre-wrap">{error}</p>
           </div>
         )}
 
@@ -658,7 +661,7 @@ export default function App() {
             className="flex items-center bg-red-700 hover:bg-red-800 text-white px-12 py-4 rounded-2xl font-black text-lg shadow-xl shadow-red-900/20 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 max-w-4xl w-full justify-center tracking-wide"
           >
             <FileText className="w-6 h-6 mr-3" />
-            Generate Live Protocol
+            Generate Final Protocol
           </button>
         </div>
       </main>
