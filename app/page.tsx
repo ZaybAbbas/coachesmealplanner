@@ -195,10 +195,9 @@ export default function App() {
       }
     `;
 
-    const payload = {
+   const payload = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        responseMimeType: "application/json",
         maxOutputTokens: 8192
       }
     };
@@ -210,8 +209,7 @@ export default function App() {
     while (retries <= maxRetries) {
       try {
         // Guaranteeing the public model and your API key
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`, {
-          method: 'POST',
+        const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=' + apiKey, {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
