@@ -150,6 +150,7 @@ export default function App() {
       15. TOKEN LIMIT SAVER: Keep the "description" field for each meal VERY brief (under 10 words).
       16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", you MUST build the meal plan strictly prioritising these specific ingredients. Do not invent meals that require them to buy a completely different set of groceries.
       17. THE Z.A. REALITY CHECK (AGGRESSIVE GOALS): Analyze their 'Weight' against their 'Goal timeframe'. If they are asking for an unsafe rate of weight loss (losing > 0.8kg per week or requiring a deficit > 600 kcal/day), you MUST intervene. Cap their deficit at a safe 500 kcal max (NEVER drop below 1200-1300 kcal/day). Then, as the VERY FIRST item in the "tips" array, include a blunt, professional note managing their expectations. Example: "Coach's Reality Check: Your goal of [timeframe] is highly aggressive and risks muscle loss. I have adjusted your protocol to a safe, evidence-based deficit for sustainable results." If the goal is reasonable, no reality check is needed.
+      18. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
 
       Return ONLY a valid JSON object matching this EXACT schema. Do NOT truncate the days or weeks arrays:
       {
@@ -189,7 +190,8 @@ export default function App() {
           "storeCupboardStaples": ["item 1"]
         },
         "tips": ["Practical tip 1", "Practical tip 2", "Practical tip 3"],
-        "summary": "One-line summary of what to focus on most this week."
+        "summary": "One-line summary of what to focus on most this week.",
+        "quickWins": ["Non-negotiable 1", "Non-negotiable 2", "Non-negotiable 3"]
       }
     `;
 
@@ -338,6 +340,24 @@ export default function App() {
                 <p className="text-red-100 text-sm leading-relaxed">
                   <strong className="text-white">Menu Rotation:</strong> You have been provided a 7-day master menu. Cycle this exact menu weekly to complete your {formData.durationWeeks}-week protocol.
                 </p>
+              </div>
+            )}
+
+            {/* Quick Wins */}
+            {Array.isArray(generatedPlan?.quickWins) && generatedPlan.quickWins.length > 0 && (
+              <div className="relative z-10 mt-8 bg-red-700 p-8 rounded-3xl shadow-2xl">
+                <h3 className="text-white font-black text-lg uppercase tracking-widest mb-5 flex items-center">
+                  <CheckCircle2 className="w-5 h-5 mr-3 shrink-0" />
+                  Your 3 Non-Negotiables This Week
+                </h3>
+                <ul className="space-y-3">
+                  {generatedPlan.quickWins.map((win, idx) => (
+                    <li key={idx} className="flex items-start">
+                      <span className="text-white font-black text-lg mr-3 shrink-0">{idx + 1}.</span>
+                      <p className="text-red-100 font-medium leading-snug">{win}</p>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>
