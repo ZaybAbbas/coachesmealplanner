@@ -150,8 +150,7 @@ export default function App() {
       15. TOKEN LIMIT SAVER: Keep the "description" field for each meal VERY brief (under 10 words).
       16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", you MUST build the meal plan strictly prioritising these specific ingredients. Do not invent meals that require them to buy a completely different set of groceries.
       17. THE Z.A. REALITY CHECK (AGGRESSIVE GOALS): Analyze their 'Weight' against their 'Goal timeframe'. If they are asking for an unsafe rate of weight loss (losing > 0.8kg per week or requiring a deficit > 600 kcal/day), you MUST intervene. Cap their deficit at a safe 500 kcal max (NEVER drop below 1200-1300 kcal/day). Then, as the VERY FIRST item in the "tips" array, include a blunt, professional note managing their expectations. Example: "Coach's Reality Check: Your goal of [timeframe] is highly aggressive and risks muscle loss. I have adjusted your protocol to a safe, evidence-based deficit for sustainable results." If the goal is reasonable, no reality check is needed.
-      18. INGREDIENTS LIST: For every meal, populate the "ingredients" array with each ingredient as a plain English string including weight in grams or standard measures (e.g. "150g chicken breast", "2 large eggs", "1 tbsp light mayo", "30g cheddar cheese"). Be specific and accurate — these will be used to calculate real nutritional values.
-      19. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
+      18. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
 
       Return ONLY a valid JSON object matching this EXACT schema. Do NOT truncate the days or weeks arrays:
       {
@@ -173,7 +172,6 @@ export default function App() {
                     "type": "Breakfast",
                     "name": "Meal Name",
                     "description": "Brief description",
-                    "ingredients": ["150g chicken breast", "50g dry basmati rice", "1 tsp olive oil"],
                     "metrics": "X kcal | Yg P | Zg C | Wg F",
                     "prepNote": "Required if >15 mins (e.g., 'Prep night before')",
                     "lazySwap": "Required for at least 1 meal/day (same nutrition, less effort)"
@@ -235,35 +233,6 @@ export default function App() {
           }
 
           const parsedData = JSON.parse(cleanText);
-
-          // Look up real macros from Edamam for each meal
-          for (const week of parsedData.weeks || []) {
-            for (const day of week.days || []) {
-              let dayCalories = 0, dayProtein = 0, dayFibre = 0;
-              for (const meal of day.meals || []) {
-                if (meal.ingredients?.length > 0) {
-                  try {
-                    const nutritionRes = await fetch('/api/nutrition', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ title: meal.name, ingredients: meal.ingredients })
-                    });
-                    if (nutritionRes.ok) {
-                      const nutrition = await nutritionRes.json();
-                      meal.metrics = `${nutrition.calories} kcal | ${nutrition.protein}g P | ${nutrition.carbs}g C | ${nutrition.fat}g F`;
-                      dayCalories += nutrition.calories;
-                      dayProtein += nutrition.protein;
-                      dayFibre += nutrition.fibre;
-                    }
-                  } catch {}
-                }
-              }
-              if (dayCalories > 0) {
-                day.dailyTotals = `Calories: ${dayCalories} | Protein: ${dayProtein}g | Fibre: ${dayFibre}g`;
-              }
-            }
-          }
-
           setGeneratedPlan(parsedData);
           setView('preview');
           return;
