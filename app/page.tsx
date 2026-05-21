@@ -153,6 +153,11 @@ export default function App() {
       13. CRITICAL LENGTH REQUIREMENT: You MUST generate exactly ${aiWeeks} complete week. Do NOT generate more than ${aiWeeks} week.
       14. CRITICAL DAYS REQUIREMENT: Every single week MUST contain exactly 7 complete days (Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday). DO NOT stop early. DO NOT provide partial weeks or partial days.
       15. MEAL DESCRIPTIONS: Write 2-3 sentences for each meal description. Explain what the meal is, what's in it, and one practical tip on how to prepare it simply. Written directly to the client in Z.A Training tone.
+      15b. PORTION GUIDE RULE: Every meal MUST include a "portionGuide" field. This tells the client exactly how much to eat. Format it based on the dietary approach:
+          - "Calories & Macros": Use exact weights e.g. "150g chicken keema | 1 chapati (60g) | 80g baby potatoes"
+          - "Hand Portions": Use practical measures e.g. "4 tablespoons keema | 1 chapati | 1 palm-sized piece of basa | 1 small Skyr pot (150g)" — always include the pack/pot size for branded products
+          - "Simple Targets": Use plain English e.g. "A good-sized bowl of keema — roughly 4-5 tablespoons | 1 chapati on the side"
+          For packaged products always specify the exact size e.g. "1 x 150g Skyr pot", "1 x John West Infusions Tuna pot (110g)", "2 Warburtons Protein Bagel Thins".
       16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", you MUST build the meal plan strictly prioritising these specific ingredients. Do not invent meals that require them to buy a completely different set of groceries.
       17. CALORIE FLOOR: Never drop below 1200-1300 kcal/day regardless of how aggressive the goal is. Cap deficit at 500 kcal max. Do NOT include any warning or reality check note in the tips — just silently apply the safe deficit.
       18. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
@@ -177,6 +182,7 @@ export default function App() {
                     "type": "Breakfast",
                     "name": "Meal Name",
                     "description": "Brief description",
+                    "portionGuide": "Exact portion sizes based on dietary approach",
                     "metrics": "X kcal | Yg P | Zg C | Wg F",
                     "prepNote": "Required if >15 mins (e.g., 'Prep night before')",
                     "lazySwap": "Required for at least 1 meal/day (same nutrition, less effort)"
@@ -411,7 +417,13 @@ export default function App() {
                           </span>
                         </div>
                         <h4 className="text-xl font-bold text-black mb-2 pl-2">{meal?.name || "Recipe"}</h4>
-                        <p className="text-zinc-600 text-sm mb-4 leading-relaxed pl-2">{meal?.description || ""}</p>
+                        <p className="text-zinc-600 text-sm mb-3 leading-relaxed pl-2">{meal?.description || ""}</p>
+                        {meal?.portionGuide && (
+                          <div className="ml-2 mb-3 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                            <p className="text-xs font-black text-red-700 uppercase tracking-wider mb-1">Your Portion</p>
+                            <p className="text-sm font-semibold text-zinc-800 leading-relaxed">{meal.portionGuide}</p>
+                          </div>
+                        )}
                         
                         {(meal?.prepNote || meal?.lazySwap) && (
                           <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-zinc-100 pl-2">
