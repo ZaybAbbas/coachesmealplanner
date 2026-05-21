@@ -36,6 +36,7 @@ export default function App() {
   
   const [generatedPlan, setGeneratedPlan] = useState(null);
   const [error, setError] = useState('');
+  const [showTargets, setShowTargets] = useState(true);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -149,7 +150,7 @@ export default function App() {
       14. CRITICAL DAYS REQUIREMENT: Every single week MUST contain exactly 7 complete days (Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday). DO NOT stop early. DO NOT provide partial weeks or partial days.
       15. TOKEN LIMIT SAVER: Keep the "description" field for each meal VERY brief (under 10 words).
       16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", you MUST build the meal plan strictly prioritising these specific ingredients. Do not invent meals that require them to buy a completely different set of groceries.
-      17. THE Z.A. REALITY CHECK (AGGRESSIVE GOALS): Analyze their 'Weight' against their 'Goal timeframe'. If they are asking for an unsafe rate of weight loss (losing > 0.8kg per week or requiring a deficit > 600 kcal/day), you MUST intervene. Cap their deficit at a safe 500 kcal max (NEVER drop below 1200-1300 kcal/day). Then, as the VERY FIRST item in the "tips" array, include a blunt, professional note managing their expectations. Example: "Coach's Reality Check: Your goal of [timeframe] is highly aggressive and risks muscle loss. I have adjusted your protocol to a safe, evidence-based deficit for sustainable results." If the goal is reasonable, no reality check is needed.
+      17. CALORIE FLOOR: Never drop below 1200-1300 kcal/day regardless of how aggressive the goal is. Cap deficit at 500 kcal max. Do NOT include any warning or reality check note in the tips — just silently apply the safe deficit.
       18. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
 
       Return ONLY a valid JSON object matching this EXACT schema. Do NOT truncate the days or weeks arrays:
@@ -286,6 +287,9 @@ export default function App() {
           <button onClick={() => setView('dashboard')} className="flex items-center text-zinc-600 hover:text-black bg-white px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors">
             <ArrowLeft className="w-4 h-4 mr-2" /> Edit Details
           </button>
+          <button onClick={() => setShowTargets(!showTargets)} className="flex items-center text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-50 px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors">
+            {showTargets ? 'Hide Targets' : 'Show Targets'}
+          </button>
           <button onClick={() => window.print()} className="flex items-center bg-red-700 hover:bg-red-800 text-white px-6 py-2 rounded-lg shadow-md font-bold transition-all">
             <Download className="w-4 h-4 mr-2" /> Export to PDF
           </button>
@@ -307,6 +311,7 @@ export default function App() {
               <p className="text-2xl text-zinc-400 font-light">Prepared for <span className="text-white font-semibold">{formData.clientName}</span></p>
             </header>
 
+            {showTargets && (
             <div className="relative z-10 mt-16 bg-zinc-900/60 p-8 rounded-3xl border border-red-900/50 backdrop-blur-sm shadow-2xl">
               <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
                 <Target className="w-6 h-6 mr-3 text-red-500" />
@@ -332,6 +337,7 @@ export default function App() {
                 </div>
               </div>
             </div>
+            )}
             
             {/* Cycle Banner */}
             {parseInt(formData.durationWeeks, 10) > 1 && (
@@ -366,7 +372,7 @@ export default function App() {
           {(Array.isArray(generatedPlan?.weeks) ? generatedPlan.weeks : []).map((week, weekIdx) => (
             <div key={weekIdx}>
               {(Array.isArray(week?.days) ? week.days : []).map((day, dayIdx) => (
-                <div key={dayIdx} className="page break-after-page min-h-[297mm] p-16 bg-white flex flex-col relative overflow-hidden">
+                <div key={dayIdx} className="page break-before-page break-after-page min-h-[297mm] p-16 pt-20 bg-white flex flex-col relative overflow-hidden">
                   
                   {/* Subtle Page Watermark */}
                   <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
@@ -428,7 +434,7 @@ export default function App() {
           ))}
 
           {/* Shopping List & Summary Page */}
-          <div className="page break-after-page min-h-[297mm] p-16 bg-zinc-50 relative overflow-hidden">
+          <div className="page break-before-page break-after-page min-h-[297mm] p-16 pt-20 bg-zinc-50 relative overflow-hidden">
             {/* Subtle Page Watermark */}
             <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
               <img src={LOGO_URL} className="w-[500px] h-[500px] object-contain grayscale" alt="" />
