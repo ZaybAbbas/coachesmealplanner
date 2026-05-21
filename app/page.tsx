@@ -145,10 +145,14 @@ export default function App() {
           - SIGNATURE MEALS: Protein smoothies (whey, ice, frozen berries, 1 tsp PB, semi-skim milk), cheesecake/overnight oats, eggs & smoked salmon on a protein bagel, tuna baked potato with light mayo & mozzarella, chicken/kebab wraps.
           - SIGNATURE SNACKS: Babybel Light with apples, boiled eggs, Quest/Fulfil bars, rice cakes with PB, edamame, whole almonds.
       11. STRICTLY FORBIDDEN FOODS: NEVER include Pork, Bacon, Alcohol, Turkey, Rotisserie Chicken, Tempeh, Tofu, Medallions (or any fancy/expensive cuts of meat), Prawn Masala, Curd Bengan, Grilled Salmon, or Roasted Gobi under any circumstances.
-      12. SECRET MACRO MATH RULE: To ensure 80-90%+ accuracy for South Asian composite meals, calculate the meal macros internally using standard raw/dry ingredient weights (e.g., 150g raw chicken + 50g dry rice + 1tsp oil). However, DO NOT display these raw weights to the client. Only output the final aggregated numbers in the metrics field (e.g., "450 kcal | 35g P | 45g C | 12g F"). Let the client eyeball the cooking.
+      12. DIETARY APPROACH DISPLAY RULE: Always calculate macros internally for accuracy. Then display them based on the chosen approach:
+          - If approach is "Calories & Macros": show full metrics as "450 kcal | 35g Protein | 45g Carbs | 12g Fat | 8g Fibre"
+          - If approach is "Hand Portions": show ONLY "1 palm protein | 1 cupped hand carbs | 1 fist veg | 1 thumb fat" then on a new line "Approx. 35g Protein | 8g Fibre"
+          - If approach is "Simple Targets": show in plain English e.g. "Around 450 calories — aim for 35g protein and 8g fibre"
+          Always calculate and include protein and fibre regardless of approach.
       13. CRITICAL LENGTH REQUIREMENT: You MUST generate exactly ${aiWeeks} complete week. Do NOT generate more than ${aiWeeks} week.
       14. CRITICAL DAYS REQUIREMENT: Every single week MUST contain exactly 7 complete days (Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday). DO NOT stop early. DO NOT provide partial weeks or partial days.
-      15. TOKEN LIMIT SAVER: Keep the "description" field for each meal VERY brief (under 10 words).
+      15. MEAL DESCRIPTIONS: Write 2-3 sentences for each meal description. Explain what the meal is, what's in it, and one practical tip on how to prepare it simply. Written directly to the client in Z.A Training tone.
       16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", you MUST build the meal plan strictly prioritising these specific ingredients. Do not invent meals that require them to buy a completely different set of groceries.
       17. CALORIE FLOOR: Never drop below 1200-1300 kcal/day regardless of how aggressive the goal is. Cap deficit at 500 kcal max. Do NOT include any warning or reality check note in the tips — just silently apply the safe deficit.
       18. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
@@ -428,6 +432,11 @@ export default function App() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Disclaimer */}
+                  <p className="relative z-10 mt-6 text-zinc-400 text-xs italic text-center">
+                    Nutritional values are estimates. Actual values may vary slightly depending on brands and cooking methods.
+                  </p>
                 </div>
               ))}
             </div>
