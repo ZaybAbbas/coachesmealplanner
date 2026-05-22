@@ -160,7 +160,8 @@ export default function App() {
           For packaged products always specify the exact size e.g. "1 x 150g Skyr pot", "1 x John West Infusions Tuna pot (110g)", "2 Warburtons Protein Bagel Thins".
       16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", you MUST build the meal plan strictly prioritising these specific ingredients. Do not invent meals that require them to buy a completely different set of groceries.
       17. CALORIE FLOOR: Never drop below 1200-1300 kcal/day regardless of how aggressive the goal is. Cap deficit at 500 kcal max. Do NOT include any warning or reality check note in the tips — just silently apply the safe deficit.
-      18. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
+      18. MOTIVATIONAL QUOTE: Generate a short, punchy, personalised motivational quote for this specific client. 1-2 sentences max. Written directly to them by name. Based on their goal, hormonal status, and situation. NOT generic. Use the Z.A Training tone — real, direct, warm. Example for fat loss: "Fatima, every meal you nail this week is proof that you're building a body you're proud of. Stay consistent — it's already working." Example for PCOS: "Zara, managing PCOS through food is one of the most powerful things you can do for yourself. You've got this."
+      19. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
 
       Return ONLY a valid JSON object matching this EXACT schema. Do NOT truncate the days or weeks arrays:
       {
@@ -202,7 +203,8 @@ export default function App() {
         },
         "tips": ["Practical tip 1", "Practical tip 2", "Practical tip 3"],
         "summary": "One-line summary of what to focus on most this week.",
-        "quickWins": ["Non-negotiable 1", "Non-negotiable 2", "Non-negotiable 3"]
+        "quickWins": ["Non-negotiable 1", "Non-negotiable 2", "Non-negotiable 3"],
+        "motivationalQuote": "Personalised motivational quote written directly to the client"
       }
     `;
 
@@ -376,7 +378,50 @@ export default function App() {
                 </ul>
               </div>
             )}
+
+            {/* Motivational Quote */}
+            {generatedPlan?.motivationalQuote && (
+              <div className="relative z-10 mt-8 px-2">
+                <p className="text-2xl font-light text-white/80 italic leading-relaxed text-center">
+                  "{generatedPlan.motivationalQuote}"
+                </p>
+              </div>
+            )}
           </div>
+
+          {/* Week at a Glance Page */}
+          {Array.isArray(generatedPlan?.weeks?.[0]?.days) && (
+            <div className="page break-before-page break-after-page min-h-[297mm] p-16 pt-20 bg-white flex flex-col relative overflow-hidden">
+              <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
+                <img src={LOGO_URL} className="w-[500px] h-[500px] object-contain grayscale" alt="" />
+              </div>
+              <header className="relative z-10 mb-10 border-b-2 border-zinc-100 pb-5 flex justify-between items-end">
+                <div>
+                  <h4 className="text-red-700 font-bold tracking-widest uppercase text-sm mb-1">Your Plan</h4>
+                  <h2 className="text-4xl font-black text-black">Week at a Glance</h2>
+                  <p className="text-zinc-500 mt-1 font-medium">Stick this on your fridge.</p>
+                </div>
+                <img src={LOGO_URL} alt="ZA" className="w-10 h-10 object-contain opacity-80" />
+              </header>
+              <div className="relative z-10 grid grid-cols-7 gap-3 flex-1">
+                {generatedPlan.weeks[0].days.map((day, idx) => (
+                  <div key={idx} className="flex flex-col">
+                    <div className="bg-black text-white text-center py-2 rounded-xl mb-3">
+                      <p className="text-xs font-black uppercase tracking-widest">{day.day?.substring(0, 3)}</p>
+                    </div>
+                    <div className="flex flex-col gap-2 flex-1">
+                      {(day.meals || []).map((meal, mIdx) => (
+                        <div key={mIdx} className="bg-zinc-50 border border-zinc-200 rounded-xl p-2.5">
+                          <p className="text-[9px] font-black text-red-700 uppercase tracking-wide mb-1">{meal.type}</p>
+                          <p className="text-[10px] font-semibold text-zinc-800 leading-snug">{meal.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Weekly Plans */}
           {(Array.isArray(generatedPlan?.weeks) ? generatedPlan.weeks : []).map((week, weekIdx) => (
