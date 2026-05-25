@@ -210,7 +210,7 @@ export default function App() {
    const payload = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        maxOutputTokens: 32768
+        maxOutputTokens: 16384
       }
     };
 
