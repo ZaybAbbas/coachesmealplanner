@@ -154,7 +154,7 @@ export default function App() {
           Always calculate and include protein and fibre regardless of approach.
       13. CRITICAL LENGTH REQUIREMENT: You MUST generate exactly ${aiWeeks} complete week. Do NOT generate more than ${aiWeeks} week.
       14. CRITICAL DAYS REQUIREMENT: Every single week MUST contain exactly 7 complete days (Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday). DO NOT stop early. DO NOT provide partial weeks or partial days.
-      15. MEAL DESCRIPTIONS: Write 2-3 sentences for each meal description. Explain what the meal is, what's in it, and one practical tip on how to prepare it simply. Written directly to the client in Z.A Training tone.
+      15. MEAL DESCRIPTIONS: Write 1 sentence max for each meal description. One line only — what the meal is and why it works. Written directly to the client in Z.A Training tone.
       15b. PORTION GUIDE RULE: Every meal MUST include a "portionGuide" field. This tells the client exactly how much to eat. Format it based on the dietary approach:
           - "Calories & Macros": Use exact weights e.g. "150g chicken keema | 1 chapati (60g) | 80g baby potatoes"
           - "Hand Portions": Use practical measures e.g. "4 tablespoons keema | 1 chapati | 1 palm-sized piece of basa | 1 small Skyr pot (150g)" — always include the pack/pot size for branded products
@@ -162,8 +162,7 @@ export default function App() {
           For packaged products always specify the exact size e.g. "1 x 150g Skyr pot", "1 x John West Infusions Tuna pot (110g)", "2 Warburtons Protein Bagel Thins".
       16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", you MUST build every single meal STRICTLY using ONLY the ingredients listed. Do not add anything outside that list to the main meal. No exceptions.
       17. CALORIE FLOOR: Never drop below 1200-1300 kcal/day regardless of how aggressive the goal is. Cap deficit at 500 kcal max. Do NOT include any warning or reality check note in the tips — just silently apply the safe deficit.
-      18. BOOST TIP RULE: Every meal MUST include a "boostTip" field — a short, practical suggestion for how to easily increase the protein or nutritional value of that meal. Written directly to the client. Keep it to one sentence. Must be realistic and easy. STRICTLY HALAL ONLY — never suggest pork, bacon, alcohol, or anything haram. Examples: "Add a scoop of whey protein to your porridge to push protein past 30g.", "Serve with a fat-free Greek yoghurt on the side for an extra 10g protein.", "Swap regular milk for semi-skimmed to save 20 calories without losing any taste."
-      19. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
+      18. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
 
       Return ONLY a valid JSON object matching this EXACT schema. Do NOT truncate the days or weeks arrays:
       {
@@ -187,9 +186,7 @@ export default function App() {
                     "description": "Brief description",
                     "portionGuide": "Exact portion sizes based on dietary approach",
                     "metrics": "X kcal | Yg P | Zg C | Wg F",
-                    "prepNote": "Required if >15 mins (e.g., 'Prep night before')",
-                    "lazySwap": "Required for at least 1 meal/day (same nutrition, less effort)",
-                    "boostTip": "One practical tip to easily boost protein or nutrition of this meal"
+                    "prepNote": "Only if >15 mins. Max 5 words (e.g., 'Prep night before')"
                   }
                 ],
                 "dailyTotals": "Calories: X | Protein: Yg | Fibre: Zg"
@@ -274,7 +271,7 @@ export default function App() {
         <p className="text-zinc-600 max-w-md text-center mb-6">
           {streamedChars === 0
             ? `Calculating TDEE, adapting for ${formData.hormonalStatus}, and sourcing ${formData.regionalCuisine} recipes within a ${formData.cookingTime} window...`
-            : `Building meals, portion guides and boost tips for ${formData.clientName}...`}
+            : `Building meals and portion guides for ${formData.clientName}...`}
         </p>
         {streamedChars > 0 && (
           <div className="w-full max-w-sm">
@@ -470,26 +467,12 @@ export default function App() {
                           </div>
                         )}
                         
-                        {(meal?.prepNote || meal?.lazySwap) && (
+                        {meal?.prepNote && (
                           <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-zinc-100 pl-2">
-                            {meal?.prepNote && (
-                              <div className="flex items-start text-zinc-700 bg-zinc-50 px-4 py-3 rounded-xl text-sm border border-zinc-200/50">
-                                <Clock className="w-4 h-4 mr-2.5 mt-0.5 shrink-0 text-red-600" />
-                                <span className="font-medium"><strong className="text-black">Prep Note:</strong> {meal.prepNote}</span>
-                              </div>
-                            )}
-                            {meal?.lazySwap && (
-                              <div className="flex items-start text-zinc-700 bg-zinc-50 px-4 py-3 rounded-xl text-sm border border-zinc-200/50">
-                                <Utensils className="w-4 h-4 mr-2.5 mt-0.5 shrink-0 text-red-600" />
-                                <span className="font-medium"><strong className="text-black">Lazy Swap:</strong> {meal.lazySwap}</span>
-                              </div>
-                            )}
-                            {meal?.boostTip && (
-                              <div className="flex items-start text-zinc-700 bg-zinc-50 px-4 py-3 rounded-xl text-sm border border-zinc-200/50">
-                                <Lightbulb className="w-4 h-4 mr-2.5 mt-0.5 shrink-0 text-red-600" />
-                                <span className="font-medium"><strong className="text-black">Boost Tip:</strong> {meal.boostTip}</span>
-                              </div>
-                            )}
+                            <div className="flex items-start text-zinc-700 bg-zinc-50 px-4 py-3 rounded-xl text-sm border border-zinc-200/50">
+                              <Clock className="w-4 h-4 mr-2.5 mt-0.5 shrink-0 text-red-600" />
+                              <span className="font-medium"><strong className="text-black">Prep Note:</strong> {meal.prepNote}</span>
+                            </div>
                           </div>
                         )}
                       </div>
