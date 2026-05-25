@@ -28,6 +28,7 @@ export default function App() {
     dietaryPreferences: 'Standard',
     regionalCuisine: 'Indian',
     cookingFor: 'Herself only',
+    familySize: '4',
     cookingTime: '30 mins',
     batchCooking: 'Yes',
     religiousFasting: 'None',
@@ -55,7 +56,7 @@ export default function App() {
     const hormonalStatuses = ["Regular cycle", "PCOS", "Perimenopause", "Menopause", "Post-menopause"];
     const medicalFlagsList = ["None", "None", "None", "Insulin resistance", "Type 2 diabetes risk", "Slightly elevated cholesterol"];
     const durations = ["1", "2", "4", "6", "8", "12"];
-    const approaches = ["Calories & Macros", "Hand Portions", "Simple Targets"];
+    const approaches = ["Calories & Macros", "Hand Portions", "Simple Targets", "Cups"];
     const diets = ["Standard", "Vegetarian", "No Beef", "Dairy-free", "Standard"];
     const cuisines = ["Pakistani", "Indian", "Bangladeshi", "Sri Lankan", "Mixed South Asian", "Mix of South Asian and Western", "Western/Standard"];
     const cookingForOptions = ["Herself only", "Couple", "Family (with kids)"];
@@ -165,6 +166,7 @@ export default function App() {
       - Dietary preferences/restrictions: ${formData.dietaryPreferences}
       - Regional cuisine: ${formData.regionalCuisine}
       - Cooking for: ${formData.cookingFor}
+      - People eating: ${formData.cookingFor === 'Family (with kids)' ? formData.familySize + ' people total (including client)' : formData.cookingFor === 'Couple' ? '2 people' : '1 — client only'}
       - Available cooking time per day: ${formData.cookingTime}
       - Batch cooking: ${formData.batchCooking}
       - Religious fasting: ${formData.religiousFasting}
@@ -175,8 +177,8 @@ export default function App() {
       2. Use South Asian meals as the foundation (Rice, roti, dal, lentils, sabzi, curry, yoghurt, eggs, legumes). No Western defaults unless requested.
       3. Every meal MUST include a clear protein source. Dal/lentils alone do not count as sufficient protein without another source.
       4. Fibre must come from whole foods.
-      5. Adapt for family tables if 'Cooking for' is family.
-      6. Flag batch cooking opportunities if enabled.
+      5. FAMILY COOKING: If cooking for Family or Couple, the client's individual portion (what goes on HER plate only) is ALWAYS shown first. Then add a short batch note in brackets showing total to cook. Batch note always uses grams or cups — never hand portion language. Keep it under 10 words. Examples: "(Cook ~3 cups keema total — family of 4)" or "(×2 — cook ~300g total)". For individually packaged items (eggs, chapatis, protein bars, Skyr pots) write "1 per person" — no batch calculation needed.
+      6. BATCH COOKING vs FAMILY COOKING — CRITICAL DIFFERENCE: Batch cooking = cooking multiple days' meals in one session for the CLIENT ONLY. This does NOT change her individual portion sizes. Family cooking = cooking one meal for multiple people. These are completely separate concepts. NEVER multiply portion sizes for both simultaneously.
       7. Keep within the cooking time limit.
       8. HORMONES/MEDICAL: If perimenopausal/menopausal, increase calcium and prioritise protein. If PCOS/Insulin Resistance, reduce refined carbs, use low-GI, pair carbs with protein/fat.
       9. Z.A TRAINING TONE: Keep language highly practical, direct, and jargon-free. Written to the client. Incorporate my signature coaching tone (e.g., "Chill on the oil!", "Comfort food, don't overdo it", "Use common sense", "Air-fry to save time", "Always WhatsApp me if you are ever unsure").
@@ -197,7 +199,11 @@ export default function App() {
           Always calculate and include protein and fibre regardless of approach.
       13. CRITICAL LENGTH REQUIREMENT: You MUST generate exactly ${aiWeeks} complete week. Do NOT generate more than ${aiWeeks} week.
       14. CRITICAL DAYS REQUIREMENT: Every single week MUST contain exactly 7 complete days (Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday). DO NOT stop early. DO NOT provide partial weeks or partial days.
-      14b. CRITICAL MEAL COUNT: Generate EXACTLY 3 meals per day — Breakfast, Lunch, and Dinner. No snacks, no extras. Exactly 3. No more, no less.
+      14b. CRITICAL MEAL COUNT: Generate EXACTLY 3 meals per day. Meal structure depends on fasting:
+          - Standard: Breakfast, Lunch, Dinner
+          - If "Ramadan": Suhoor (pre-dawn, before Fajr — filling, slow-release carbs + high protein), Iftar (breaking fast at Maghrib — balanced full meal), Late Evening Meal (lighter, after Taraweeh). NO standard breakfast/lunch/dinner labels.
+          - If "Intermittent Fasting": Midday Meal (12pm), Afternoon Snack (3:30pm), Evening Meal (7pm). NO breakfast.
+          If Ramadan + Vegetarian: protein targets will be very hard to hit — include a tip recommending plant-based or whey protein powder at Suhoor.
       15. MEAL DESCRIPTIONS: Write 1 sentence max for each meal description. One line only — what the meal is and why it works. Written directly to the client in Z.A Training tone.
       15b. PORTION GUIDE RULE: Every meal MUST include a "portionGuide" field. This tells the client exactly how much to eat. Format it based on the dietary approach:
           - "Calories & Macros": Use exact weights e.g. "150g chicken keema | 1 chapati (60g) | 80g baby potatoes"
@@ -205,9 +211,12 @@ export default function App() {
           - "Simple Targets": Use plain English e.g. "A good-sized bowl of keema — roughly 4-5 tablespoons | 1 chapati on the side"
           - "Cups": Use cup measurements e.g. "¾ cup cooked chicken keema | ½ cup basmati rice | ¼ cup Greek yoghurt" — for items that don't translate to cups (1 chapati, 1 protein bar, 1 Skyr pot) keep as natural units
           For packaged products always specify the exact size e.g. "1 x 150g Skyr pot", "1 x John West Infusions Tuna pot (110g)", "2 Warburtons Protein Bagel Thins".
+          CUPS — USE FOR: cooked rice, couscous, pasta, oats, keema/mince in sauce, any curry or sauce-based dish, dal/lentils (cooked), chickpeas/legumes (cooked), loose Greek yoghurt or Skyr (not in a packet), overnight oats, porridge, liquid egg whites, soups/stews.
+          CUPS — DO NOT USE FOR: chapatis (1 chapati), whole eggs (2 eggs), baby potatoes (units or grams), fish fillets (1 fillet or grams), chicken breast (1 breast or grams), smoked salmon (grams), protein bars (1 bar), packaged yoghurt pots (1 x 150g Skyr), bread/bagels/thins (units), Babybel (units), rice cakes (units), avocado (½ avocado).
+          DAIRY-FREE FALLBACK: If dairy-free selected, replace Greek yoghurt/Skyr cup portions with lentils, chickpeas, or keema instead.
       16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", you MUST build every single meal STRICTLY using ONLY the ingredients listed. Do not add anything outside that list to the main meal. No exceptions.
-      17. CALORIE FLOOR: Never drop below 1200-1300 kcal/day regardless of how aggressive the goal is. Cap deficit at 500 kcal max. Do NOT include any warning or reality check note in the tips — just silently apply the safe deficit.
-      18. SHOPPING LIST RULE: Maximum 4 items per category. Only include what is genuinely needed — no padding.
+      17. CALORIE TARGETS: Fat loss = 300-500 kcal deficit, never below 1200-1300 kcal/day. Maintenance = no deficit, eat at TDEE. Muscle building/recomposition = at TDEE or slight surplus. Cap any deficit at 500 kcal max. Do NOT include any warning note in the tips — just silently apply the correct target.
+      18. SHOPPING LIST RULE: Maximum 4 items per category. Only include what is genuinely needed. If cooking for Family or Couple, add approximate weekly quantity for bulk items e.g. "Chicken mince (~1.2kg for the week)".
       19. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
 
       Return ONLY a valid JSON object matching this EXACT schema. Do NOT truncate the days or weeks arrays:
@@ -765,6 +774,19 @@ export default function App() {
                   <option>Herself only</option><option>Couple</option><option>Family (with kids)</option>
                 </select>
               </div>
+              {formData.cookingFor === 'Family (with kids)' && (
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Number of People Eating</label>
+                <select name="familySize" value={formData.familySize} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none bg-white transition-all text-black font-medium cursor-pointer">
+                  <option value="3">3 people</option>
+                  <option value="4">4 people</option>
+                  <option value="5">5 people</option>
+                  <option value="6">6 people</option>
+                  <option value="7">7 people</option>
+                  <option value="8">8+ people</option>
+                </select>
+              </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Daily Cooking Time limit</label>
                 <select name="cookingTime" value={formData.cookingTime} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none bg-white transition-all text-black font-medium cursor-pointer">
