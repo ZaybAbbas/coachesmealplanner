@@ -38,6 +38,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [showTargets, setShowTargets] = useState(true);
   const [showDailyTotals, setShowDailyTotals] = useState(true);
+  const [streamedChars, setStreamedChars] = useState(0);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -216,76 +217,77 @@ export default function App() {
       }
     };
 
-    let retries = 0;
-    const maxRetries = 5;
-    const delays = [1000, 2000, 4000, 8000, 16000];
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
-    while (retries <= maxRetries) {
-      try {
-        // Guaranteeing the public model and your API key
-        const response = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.text();
-          throw new Error(`Google API Error (${response.status}): ${errorData}`);
-        }
-        
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (text) {
-          let cleanText = text.replace(/```json/gi, '').replace(/```/gi, '').trim();
-          const firstBrace = cleanText.indexOf('{');
-          const lastBrace = cleanText.lastIndexOf('}');
-          
-          if (firstBrace !== -1 && lastBrace !== -1) {
-            cleanText = cleanText.substring(firstBrace, lastBrace + 1);
-          }
-
-          const parsedData = JSON.parse(cleanText);
-          setGeneratedPlan(parsedData);
-          setView('preview');
-          return;
-        } else {
-          throw new Error("Invalid response structure from AI.");
-        }
-      } catch (err: any) {
-        console.error("Full Error:", err);
-        
-        // INSTANT FAIL: Display the raw error instantly on screen if Google blocks it
-        if (err.message.includes("404") || err.message.includes("403") || err.message.includes("400")) {
-          setError(`🚨 SERVER ERROR: ${err.message}`);
-          setView('dashboard');
-          return;
-        }
-
-        if (retries === maxRetries) {
-          setError(`🚨 FINAL ERROR: ${err.message}`);
-          setView('dashboard');
-          return;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, delays[retries]));
-        retries++;
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Google API Error (${response.status}): ${errorData}`);
       }
+
+      // Read the stream chunk by chunk
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullText += decoder.decode(value, { stream: true });
+        setStreamedChars(fullText.length);
+      }
+
+      // Parse the complete JSON once stream is finished
+      let cleanText = fullText.replace(/```json/gi, '').replace(/```/gi, '').trim();
+      const firstBrace = cleanText.indexOf('{');
+      const lastBrace = cleanText.lastIndexOf('}');
+
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+      }
+
+      const parsedData = JSON.parse(cleanText);
+      setGeneratedPlan(parsedData);
+      setStreamedChars(0);
+      setView('preview');
+
+    } catch (err: any) {
+      console.error("Full Error:", err);
+      setError(`🚨 ERROR: ${err.message}`);
+      setStreamedChars(0);
+      setView('dashboard');
     }
   };
 
   if (view === 'generating') {
+    const progress = Math.min(Math.round((streamedChars / 12000) * 100), 99);
     return (
       <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
         <Loader2 className="w-16 h-16 text-red-700 animate-spin mb-6" />
-        <h2 className="text-2xl font-bold text-zinc-900 mb-2">Analyzing Client Data...</h2>
-        <p className="text-zinc-600 max-w-md text-center mb-4">
-          Calculating TDEE, adapting for {formData.hormonalStatus}, and sourcing {formData.regionalCuisine} recipes within a {formData.cookingTime} window...
+        <h2 className="text-2xl font-bold text-zinc-900 mb-2">
+          {streamedChars === 0 ? 'Analyzing Client Data...' : 'Writing Your Plan...'}
+        </h2>
+        <p className="text-zinc-600 max-w-md text-center mb-6">
+          {streamedChars === 0
+            ? `Calculating TDEE, adapting for ${formData.hormonalStatus}, and sourcing ${formData.regionalCuisine} recipes within a ${formData.cookingTime} window...`
+            : `Building meals, portion guides and boost tips for ${formData.clientName}...`}
         </p>
-        {parseInt(formData.durationWeeks, 10) > 1 && (
-          <div className="bg-red-100 text-red-900 text-sm font-bold px-5 py-3 rounded-xl border border-red-200 animate-pulse shadow-sm">
-            Generating your Z.A Training 1-week master rotation...
+        {streamedChars > 0 && (
+          <div className="w-full max-w-sm">
+            <div className="flex justify-between text-xs font-bold text-zinc-500 mb-2">
+              <span>Generating plan</span>
+              <span>{progress}%</span>
+            </div>
+            <div className="w-full bg-zinc-200 rounded-full h-2.5">
+              <div
+                className="bg-red-700 h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
           </div>
         )}
       </div>
