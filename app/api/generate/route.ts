@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 
-export const maxDuration = 60;
+export const runtime = 'edge';
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
