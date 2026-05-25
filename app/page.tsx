@@ -37,6 +37,7 @@ export default function App() {
   const [generatedPlan, setGeneratedPlan] = useState(null);
   const [error, setError] = useState('');
   const [showTargets, setShowTargets] = useState(true);
+  const [showDailyTotals, setShowDailyTotals] = useState(true);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -158,9 +159,9 @@ export default function App() {
           - "Hand Portions": Use practical measures e.g. "4 tablespoons keema | 1 chapati | 1 palm-sized piece of basa | 1 small Skyr pot (150g)" — always include the pack/pot size for branded products
           - "Simple Targets": Use plain English e.g. "A good-sized bowl of keema — roughly 4-5 tablespoons | 1 chapati on the side"
           For packaged products always specify the exact size e.g. "1 x 150g Skyr pot", "1 x John West Infusions Tuna pot (110g)", "2 Warburtons Protein Bagel Thins".
-      16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", you MUST build the meal plan strictly prioritising these specific ingredients. Do not invent meals that require them to buy a completely different set of groceries.
+      16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", you MUST build every single meal STRICTLY using ONLY the ingredients listed. Do not add anything outside that list to the main meal. No exceptions.
       17. CALORIE FLOOR: Never drop below 1200-1300 kcal/day regardless of how aggressive the goal is. Cap deficit at 500 kcal max. Do NOT include any warning or reality check note in the tips — just silently apply the safe deficit.
-      18. MOTIVATIONAL QUOTE: Generate a short, punchy, personalised motivational quote for this specific client. 1-2 sentences max. Written directly to them by name. Based on their goal, hormonal status, and situation. NOT generic. Use the Z.A Training tone — real, direct, warm. Example for fat loss: "Fatima, every meal you nail this week is proof that you're building a body you're proud of. Stay consistent — it's already working." Example for PCOS: "Zara, managing PCOS through food is one of the most powerful things you can do for yourself. You've got this."
+      18. BOOST TIP RULE: Every meal MUST include a "boostTip" field — a short, practical suggestion for how to easily increase the protein or nutritional value of that meal. Written directly to the client. Keep it to one sentence. Must be realistic and easy. STRICTLY HALAL ONLY — never suggest pork, bacon, alcohol, or anything haram. Examples: "Add a scoop of whey protein to your porridge to push protein past 30g.", "Serve with a fat-free Greek yoghurt on the side for an extra 10g protein.", "Swap regular milk for semi-skimmed to save 20 calories without losing any taste."
       19. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
 
       Return ONLY a valid JSON object matching this EXACT schema. Do NOT truncate the days or weeks arrays:
@@ -186,7 +187,8 @@ export default function App() {
                     "portionGuide": "Exact portion sizes based on dietary approach",
                     "metrics": "X kcal | Yg P | Zg C | Wg F",
                     "prepNote": "Required if >15 mins (e.g., 'Prep night before')",
-                    "lazySwap": "Required for at least 1 meal/day (same nutrition, less effort)"
+                    "lazySwap": "Required for at least 1 meal/day (same nutrition, less effort)",
+                    "boostTip": "One practical tip to easily boost protein or nutrition of this meal"
                   }
                 ],
                 "dailyTotals": "Calories: X | Protein: Yg | Fibre: Zg"
@@ -203,8 +205,7 @@ export default function App() {
         },
         "tips": ["Practical tip 1", "Practical tip 2", "Practical tip 3"],
         "summary": "One-line summary of what to focus on most this week.",
-        "quickWins": ["Non-negotiable 1", "Non-negotiable 2", "Non-negotiable 3"],
-        "motivationalQuote": "Personalised motivational quote written directly to the client"
+        "quickWins": ["Non-negotiable 1", "Non-negotiable 2", "Non-negotiable 3"]
       }
     `;
 
@@ -302,6 +303,9 @@ export default function App() {
           <button onClick={() => setShowTargets(!showTargets)} className="flex items-center text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-50 px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors">
             {showTargets ? 'Hide Targets' : 'Show Targets'}
           </button>
+          <button onClick={() => setShowDailyTotals(!showDailyTotals)} className="flex items-center text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-50 px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors">
+            {showDailyTotals ? 'Hide Daily Totals' : 'Show Daily Totals'}
+          </button>
           <button onClick={() => window.print()} className="flex items-center bg-red-700 hover:bg-red-800 text-white px-6 py-2 rounded-lg shadow-md font-bold transition-all">
             <Download className="w-4 h-4 mr-2" /> Export to PDF
           </button>
@@ -379,14 +383,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Motivational Quote */}
-            {generatedPlan?.motivationalQuote && (
-              <div className="relative z-10 mt-8 px-2">
-                <p className="text-2xl font-light text-white/80 italic leading-relaxed text-center">
-                  "{generatedPlan.motivationalQuote}"
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Week at a Glance Page */}
@@ -441,10 +437,12 @@ export default function App() {
                     </div>
                     <div className="flex justify-between items-end">
                       <h2 className="text-4xl font-black text-black">{day?.day || "Day"}</h2>
-                      <div className="text-right bg-zinc-50 px-4 py-2 rounded-xl border border-zinc-200">
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-0.5">Daily Totals</span>
-                        <span className="font-bold text-black text-sm">{day?.dailyTotals || "TBC"}</span>
-                      </div>
+                      {showDailyTotals && (
+                        <div className="text-right bg-zinc-50 px-4 py-2 rounded-xl border border-zinc-200">
+                          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-0.5">Daily Totals</span>
+                          <span className="font-bold text-black text-sm">{day?.dailyTotals || "TBC"}</span>
+                        </div>
+                      )}
                     </div>
                   </header>
 
@@ -482,6 +480,12 @@ export default function App() {
                               <div className="flex items-start text-zinc-700 bg-zinc-50 px-4 py-3 rounded-xl text-sm border border-zinc-200/50">
                                 <Utensils className="w-4 h-4 mr-2.5 mt-0.5 shrink-0 text-red-600" />
                                 <span className="font-medium"><strong className="text-black">Lazy Swap:</strong> {meal.lazySwap}</span>
+                              </div>
+                            )}
+                            {meal?.boostTip && (
+                              <div className="flex items-start text-zinc-700 bg-zinc-50 px-4 py-3 rounded-xl text-sm border border-zinc-200/50">
+                                <Lightbulb className="w-4 h-4 mr-2.5 mt-0.5 shrink-0 text-red-600" />
+                                <span className="font-medium"><strong className="text-black">Boost Tip:</strong> {meal.boostTip}</span>
                               </div>
                             )}
                           </div>
