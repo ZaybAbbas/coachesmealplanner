@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { 
   User, Calendar, Target, 
   FileText, Download, ArrowLeft, Loader2, CheckCircle2,
-  Utensils, Activity, AlertCircle, Globe, HeartPulse, 
-  Clock, Lightbulb, Wand2
+  Utensils, Activity, AlertCircle, Globe, HeartPulse,
+  Clock, Lightbulb, Wand2, Upload
 } from 'lucide-react';
 
 
@@ -39,6 +39,8 @@ export default function App() {
   const [showTargets, setShowTargets] = useState(true);
   const [showDailyTotals, setShowDailyTotals] = useState(true);
   const [streamedChars, setStreamedChars] = useState(0);
+  const [convertFile, setConvertFile] = useState<File | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -84,6 +86,46 @@ export default function App() {
       religiousFasting: random(fastingOptions),
       availableFoods: '' 
     });
+  };
+
+  const convertToCups = async () => {
+    if (!convertFile) return;
+    setIsConverting(true);
+    setView('generating');
+    setError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', convertFile);
+      const response = await fetch('/api/convert', { method: 'POST', body: formData });
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Conversion Error (${response.status}): ${errorData}`);
+      }
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullText += decoder.decode(value, { stream: true });
+        setStreamedChars(fullText.length);
+      }
+      let cleanText = fullText.replace(/```json/gi, '').replace(/```/gi, '').trim();
+      const firstBrace = cleanText.indexOf('{');
+      const lastBrace = cleanText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+      const parsedData = JSON.parse(cleanText);
+      setGeneratedPlan(parsedData);
+      setStreamedChars(0);
+      setView('preview');
+    } catch (err: any) {
+      console.error("Conversion Error:", err);
+      setError(`🚨 ERROR: ${err.message}`);
+      setStreamedChars(0);
+      setView('dashboard');
+    } finally {
+      setIsConverting(false);
+    }
   };
 
   const isFormValid = () => {
@@ -151,6 +193,7 @@ export default function App() {
           - If approach is "Calories & Macros": show full metrics as "450 kcal | 35g Protein | 45g Carbs | 12g Fat | 8g Fibre"
           - If approach is "Hand Portions": show ONLY "1 palm protein | 1 cupped hand carbs | 1 fist veg | 1 thumb fat" then on a new line "Approx. 35g Protein | 8g Fibre"
           - If approach is "Simple Targets": show in plain English e.g. "Around 450 calories — aim for 35g protein and 8g fibre"
+          - If approach is "Cups": show "450 kcal | 35g Protein | 8g Fibre"
           Always calculate and include protein and fibre regardless of approach.
       13. CRITICAL LENGTH REQUIREMENT: You MUST generate exactly ${aiWeeks} complete week. Do NOT generate more than ${aiWeeks} week.
       14. CRITICAL DAYS REQUIREMENT: Every single week MUST contain exactly 7 complete days (Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday). DO NOT stop early. DO NOT provide partial weeks or partial days.
@@ -160,6 +203,7 @@ export default function App() {
           - "Calories & Macros": Use exact weights e.g. "150g chicken keema | 1 chapati (60g) | 80g baby potatoes"
           - "Hand Portions": Use practical measures e.g. "4 tablespoons keema | 1 chapati | 1 palm-sized piece of basa | 1 small Skyr pot (150g)" — always include the pack/pot size for branded products
           - "Simple Targets": Use plain English e.g. "A good-sized bowl of keema — roughly 4-5 tablespoons | 1 chapati on the side"
+          - "Cups": Use cup measurements e.g. "¾ cup cooked chicken keema | ½ cup basmati rice | ¼ cup Greek yoghurt" — for items that don't translate to cups (1 chapati, 1 protein bar, 1 Skyr pot) keep as natural units
           For packaged products always specify the exact size e.g. "1 x 150g Skyr pot", "1 x John West Infusions Tuna pot (110g)", "2 Warburtons Protein Bagel Thins".
       16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", you MUST build every single meal STRICTLY using ONLY the ingredients listed. Do not add anything outside that list to the main meal. No exceptions.
       17. CALORIE FLOOR: Never drop below 1200-1300 kcal/day regardless of how aggressive the goal is. Cap deficit at 500 kcal max. Do NOT include any warning or reality check note in the tips — just silently apply the safe deficit.
@@ -271,12 +315,16 @@ export default function App() {
       <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
         <Loader2 className="w-16 h-16 text-red-700 animate-spin mb-6" />
         <h2 className="text-2xl font-bold text-zinc-900 mb-2">
-          {streamedChars === 0 ? 'Analyzing Client Data...' : 'Writing Your Plan...'}
+          {isConverting
+            ? (streamedChars === 0 ? 'Reading Your Plan...' : 'Converting to Cups...')
+            : (streamedChars === 0 ? 'Analyzing Client Data...' : 'Writing Your Plan...')}
         </h2>
         <p className="text-zinc-600 max-w-md text-center mb-6">
-          {streamedChars === 0
-            ? `Calculating TDEE, adapting for ${formData.hormonalStatus}, and sourcing ${formData.regionalCuisine} recipes within a ${formData.cookingTime} window...`
-            : `Building meals and portion guides for ${formData.clientName}...`}
+          {isConverting
+            ? (streamedChars === 0 ? 'Gemini is reading your uploaded PDF...' : 'Converting all measurements to cup format — same meals, just different units...')
+            : (streamedChars === 0
+              ? `Calculating TDEE, adapting for ${formData.hormonalStatus}, and sourcing ${formData.regionalCuisine} recipes within a ${formData.cookingTime} window...`
+              : `Building meals and portion guides for ${formData.clientName}...`)}
         </p>
         {streamedChars > 0 && (
           <div className="w-full max-w-sm">
@@ -664,7 +712,7 @@ export default function App() {
               <div>
                 <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Dietary Approach</label>
                 <select name="approach" value={formData.approach} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none bg-white transition-all text-black font-medium cursor-pointer">
-                  <option>Calories & Macros</option><option>Hand Portions</option><option>Simple Targets</option>
+                  <option>Calories & Macros</option><option>Hand Portions</option><option>Simple Targets</option><option>Cups</option>
                 </select>
               </div>
               <div>
@@ -735,6 +783,46 @@ export default function App() {
               </div>
             </div>
           </div>
+
+          {/* OR Divider */}
+          <div className="relative flex items-center py-2">
+            <div className="flex-1 border-t-2 border-dashed border-zinc-300"></div>
+            <span className="px-4 text-zinc-400 font-bold text-sm uppercase tracking-widest">Or</span>
+            <div className="flex-1 border-t-2 border-dashed border-zinc-300"></div>
+          </div>
+
+          {/* Convert Existing Plan to Cups */}
+          <div className="bg-white shadow-sm border border-zinc-200 rounded-2xl overflow-hidden">
+            <div className="bg-zinc-50 border-b border-zinc-200 p-5">
+              <h2 className="text-lg font-black flex items-center text-black uppercase tracking-wide">
+                <Upload className="w-5 h-5 mr-3 text-red-700" /> Convert Existing Plan to Cups
+              </h2>
+            </div>
+            <div className="p-7">
+              <p className="text-zinc-500 text-sm mb-5">Already sent a plan and your client wants cups? Upload the PDF and we'll convert every measurement — exact same meals, exact same foods, just in cups.</p>
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Upload Plan PDF</label>
+                  <label className="flex items-center gap-3 w-full px-4 py-3 rounded-xl border-2 border-dashed border-zinc-300 hover:border-red-400 hover:bg-red-50/30 cursor-pointer transition-all group">
+                    <Upload className="w-5 h-5 text-zinc-400 group-hover:text-red-600 shrink-0" />
+                    <span className="text-sm font-medium text-zinc-500 group-hover:text-zinc-700 truncate">
+                      {convertFile ? convertFile.name : 'Click to upload PDF...'}
+                    </span>
+                    <input type="file" accept="application/pdf" className="hidden" onChange={(e) => setConvertFile(e.target.files?.[0] || null)} />
+                  </label>
+                </div>
+                <button
+                  onClick={convertToCups}
+                  disabled={!convertFile}
+                  className="flex items-center bg-zinc-800 hover:bg-black text-white px-6 py-3 rounded-xl font-bold shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                >
+                  <Wand2 className="w-4 h-4 mr-2" />
+                  Convert to Cups
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         {/* Generate Button Fixed Bottom */}
