@@ -182,14 +182,25 @@ export default function App() {
       7. Keep within the cooking time limit.
       8. HORMONES/MEDICAL: If perimenopausal/menopausal, increase calcium and prioritise protein. If PCOS/Insulin Resistance, reduce refined carbs, use low-GI, pair carbs with protein/fat.
       9. Z.A TRAINING TONE: Keep language highly practical, direct, and jargon-free. Written to the client. Incorporate my signature coaching tone (e.g., "Chill on the oil!", "Comfort food, don't overdo it", "Use common sense", "Air-fry to save time", "Always WhatsApp me if you are ever unsure").
-      10. Z.A TRAINING MASTER FINGERPRINT: Merge your AI knowledge strictly with my coaching methodology:
-          - THE CEREAL HACK: For breakfasts, suggest mixing whey protein, milk, and water in a shaker, then pouring over Bran Flakes or Weetabix.
-          - THE EGG VOLUME HACK: Heavily utilize 1 whole egg + 150ml egg whites to bump protein without calories.
-          - GO-TO CARBS: Warburtons Protein Bagels/Thins, Jason's Protein Sourdough, Ainsley Harriott couscous (Sundried Tomato & Garlic), microwave rice, baby potatoes (air-fried or baked), 1 medium chapati (max 30-60g).
-          - GO-TO PROTEINS: Arla/Brooklea/GetPRO protein yoghurts/pouches, Skyr, fat-free Greek yoghurt, lean chicken keema (mince), chicken thighs/breast, frozen white fish/basa, smoked salmon, John West Infusions Tuna pots.
-          - SOUTH ASIAN MEAL RULES: Measure curries and biryani exactly by "1.5 fistfuls". Tell clients to cook by starting with cooking spray/water, then adding a tiny bit of oil later to save calories. No fried onions in biryani. Add a side of Greek Yoghurt to low-protein curries (like Urad Daal, the highest protein daal) to bump up the protein. Use chicken mince over lamb/beef where possible.
-          - SIGNATURE MEALS: Protein smoothies (whey, ice, frozen berries, 1 tsp PB, semi-skim milk), cheesecake/overnight oats, eggs & smoked salmon on a protein bagel, tuna baked potato with light mayo & mozzarella, chicken/kebab wraps.
-          - SIGNATURE SNACKS: Babybel Light with apples, boiled eggs, Quest/Fulfil bars, rice cakes with PB, edamame, whole almonds.
+      10. Z.A TRAINING MASTER FINGERPRINT:
+
+          APPROVED FOODS MASTER LIST:
+          When "Available foods" is "Standard access" (no list provided), build ALL meals using ONLY foods from this list. Do NOT introduce any food not listed here.
+
+          PROTEINS: chicken breast, chicken thighs, lean chicken mince/keema, basa, cod, haddock, any white fish, smoked salmon, John West Infusions Tuna pots, tinned sardines, tinned mackerel, prawns, whole eggs, egg whites, fat-free Greek yoghurt, Skyr, Arla/GetPRO/Brooklea protein yoghurts/pouches, whey protein, lentils (any), chickpeas, kidney beans, low-fat cottage cheese, lamb keema (occasional only)
+          CARBS: rice (white or brown), chapati (50/50 atta, max 60-70g), oats/porridge, couscous, wholewheat pasta, baby potatoes, sweet potato, brown/wholemeal bread (e.g. Hovis), wholewheat wraps/tortillas, Bran Flakes, Weetabix (Protein version preferred), quinoa, wholewheat noodles, rye bread, dal, Warburtons Protein Bagels/Thins, Jason's Protein Sourdough, Ainsley Harriott Couscous (Sundried Tomato & Garlic), microwave rice
+          FATS: avocado, almonds (plain, skin on), cashews, walnuts, peanut butter, almond/cashew butter, 80-85% dark chocolate, chia seeds, flaxseeds, olives, extra virgin olive oil, light mozzarella, pumpkin seeds, brazil nuts, hemp seeds, pecans, whole eggs (yolks)
+          FRUITS & VEG: raspberries, blueberries, strawberries, frozen berries, apple, pear, banana, nectarine, plum, kiwi, frozen cherries, grapefruit, orange, broccoli, spinach, peppers, green beans, onions, mangetout, carrots, baby corn, Brussels sprouts, kale, frozen mixed veg, mixed salad leaves, sweet potato, pomegranate seeds
+          SOUTH ASIAN STAPLES (always allowed): rice, roti, dal, lentils, sabzi, curry bases, chickpeas, kidney beans, spices, yoghurt, eggs, cooking spray
+          EXTRAS: semi-skimmed milk, honey, cinnamon, low-fat vinaigrette, balsamic vinegar, soy sauce, light mayo, feta cheese, Babybel Light, Quest/Fulfil bars, rice cakes, edamame, whole almonds
+
+          HACKS (apply where genuinely appropriate):
+          - THE CEREAL HACK: ONLY suggest if Bran Flakes/Weetabix appears in the client's food list OR Standard access is selected. Mix whey protein + milk + water in shaker, pour over Bran Flakes or Weetabix.
+          - THE EGG VOLUME HACK: Use 1 whole egg + 150ml egg whites to bump protein without extra calories.
+
+          SOUTH ASIAN MEAL RULES: Measure curries and biryani by "1.5 fistfuls". Cook with cooking spray/water first, add tiny bit of oil later. No fried onions in biryani. Add Greek yoghurt as a side to low-protein curries. Use chicken mince over lamb/beef where possible.
+          SIGNATURE MEALS: Protein smoothie (whey + frozen berries + banana + 1 tsp PB + semi-skim milk), overnight oats, eggs & smoked salmon on protein bagel, tuna baked potato with light mayo & mozzarella, chicken/kebab wraps.
+          SIGNATURE SNACKS: Babybel Light + apple, boiled eggs, Quest/Fulfil bars, rice cakes with PB, edamame, whole almonds, chia/flax seeds stirred into yoghurt.
       11. STRICTLY FORBIDDEN FOODS: NEVER include Pork, Bacon, Alcohol, Turkey, Rotisserie Chicken, Tempeh, Tofu, Medallions (or any fancy/expensive cuts of meat), Prawn Masala, Curd Bengan, Grilled Salmon, or Roasted Gobi under any circumstances.
       12. DIETARY APPROACH DISPLAY RULE: Always calculate macros internally for accuracy. Then display them based on the chosen approach:
           - If approach is "Calories & Macros": show full metrics as "450 kcal | 35g Protein | 45g Carbs | 12g Fat | 8g Fibre"
@@ -214,7 +225,7 @@ export default function App() {
           CUPS — USE FOR: cooked rice, couscous, pasta, oats, keema/mince in sauce, any curry or sauce-based dish, dal/lentils (cooked), chickpeas/legumes (cooked), loose Greek yoghurt or Skyr (not in a packet), overnight oats, porridge, liquid egg whites, soups/stews.
           CUPS — DO NOT USE FOR: chapatis (1 chapati), whole eggs (2 eggs), baby potatoes (units or grams), fish fillets (1 fillet or grams), chicken breast (1 breast or grams), smoked salmon (grams), protein bars (1 bar), packaged yoghurt pots (1 x 150g Skyr), bread/bagels/thins (units), Babybel (units), rice cakes (units), avocado (½ avocado).
           DAIRY-FREE FALLBACK: If dairy-free selected, replace Greek yoghurt/Skyr cup portions with lentils, chickpeas, or keema instead.
-      16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", you MUST build every single meal STRICTLY using ONLY the ingredients listed. Do not add anything outside that list to the main meal. No exceptions.
+      16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", build every meal using ONLY the listed ingredients. One exception: if protein is genuinely too low for a meal, you may add one small approved booster (e.g. a side of fat-free Greek yoghurt, a Skyr pot, or egg whites) — nothing else.
       17. CALORIE TARGETS: Fat loss = 300-500 kcal deficit, never below 1200-1300 kcal/day. Maintenance = no deficit, eat at TDEE. Muscle building/recomposition = at TDEE or slight surplus. Cap any deficit at 500 kcal max. Do NOT include any warning note in the tips — just silently apply the correct target.
       18. SHOPPING LIST RULE: Maximum 4 items per category. Only include what is genuinely needed. If cooking for Family or Couple, add approximate weekly quantity for bulk items e.g. "Chicken mince (~1.2kg for the week)".
       19. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
