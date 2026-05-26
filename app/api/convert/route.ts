@@ -68,7 +68,7 @@ Return ONLY a valid JSON object in this exact schema:
 }`;
 
   const payload = {
-    model: 'claude-3-5-haiku-20241022',
+    model: 'claude-3-haiku-20240307',
     max_tokens: 16000,
     stream: true,
     messages: [

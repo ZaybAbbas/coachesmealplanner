@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   const prompt = body.contents?.[0]?.parts?.[0]?.text || '';
 
   const payload = {
-    model: 'claude-3-5-haiku-20241022',
+    model: 'claude-3-haiku-20240307',
     max_tokens: 16000,
     stream: true,
     messages: [

@@ -292,7 +292,7 @@ export default function App() {
 
       if (!response.ok) {
         const errorData = await response.text();
-        throw new Error(`Google API Error (${response.status}): ${errorData}`);
+        throw new Error(`API Error (${response.status}): ${errorData}`);
       }
 
       // Read the stream chunk by chunk
@@ -341,7 +341,7 @@ export default function App() {
         </h2>
         <p className="text-zinc-600 max-w-md text-center mb-6">
           {isConverting
-            ? (streamedChars === 0 ? 'Gemini is reading your uploaded PDF...' : 'Converting all measurements to cup format — same meals, just different units...')
+            ? (streamedChars === 0 ? 'Claude is reading your uploaded PDF...' : 'Converting all measurements to cup format — same meals, just different units...')
             : (streamedChars === 0
               ? `Calculating TDEE, adapting for ${formData.hormonalStatus}, and sourcing ${formData.regionalCuisine} recipes within a ${formData.cookingTime} window...`
               : `Building meals and portion guides for ${formData.clientName}...`)}
