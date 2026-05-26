@@ -4,20 +4,33 @@ export const runtime = 'edge';
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
 
-  const geminiResponse = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    }
-  );
+  // Extract prompt from payload
+  const prompt = body.contents?.[0]?.parts?.[0]?.text || '';
 
-  if (!geminiResponse.ok) {
-    const error = await geminiResponse.text();
-    return new Response(error, { status: geminiResponse.status });
+  const payload = {
+    model: 'claude-3-5-haiku-20241022',
+    max_tokens: 16000,
+    stream: true,
+    messages: [
+      { role: 'user', content: prompt }
+    ]
+  };
+
+  const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey!,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!claudeResponse.ok) {
+    const error = await claudeResponse.text();
+    return new Response(error, { status: claudeResponse.status });
   }
 
   const encoder = new TextEncoder();
@@ -25,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      const reader = geminiResponse.body!.getReader();
+      const reader = claudeResponse.body!.getReader();
       let buffer = '';
 
       while (true) {
@@ -40,8 +53,10 @@ export async function POST(request: NextRequest) {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
-              const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-              if (text) controller.enqueue(encoder.encode(text));
+              if (data.type === 'content_block_delta' && data.delta?.type === 'text_delta') {
+                const text = data.delta.text || '';
+                if (text) controller.enqueue(encoder.encode(text));
+              }
             } catch {}
           }
         }
