@@ -252,7 +252,8 @@ export default function App() {
                     "description": "Brief description",
                     "portionGuide": "Exact portion sizes based on dietary approach",
                     "metrics": "X kcal | Yg P | Zg C | Wg F",
-                    "prepNote": "Only if >15 mins. Max 5 words (e.g., 'Prep night before')"
+                    "prepNote": "Only if >15 mins. Max 5 words (e.g., 'Prep night before')",
+                    "swapNote": "Only include if meal uses a specific marinade, spice rub, or flavoured coating the client might want to swap. E.g. 'Not feeling this marinade? WhatsApp your coach for a quick swap! 💬' — omit entirely if no marinade involved."
                   }
                 ],
                 "dailyTotals": "Calories: X | Protein: Yg | Fibre: Zg"
@@ -546,6 +547,12 @@ export default function App() {
                               <Clock className="w-4 h-4 mr-2.5 mt-0.5 shrink-0 text-red-600" />
                               <span className="font-medium"><strong className="text-black">Prep Note:</strong> {meal.prepNote}</span>
                             </div>
+                          </div>
+                        )}
+                        {meal?.swapNote && (
+                          <div className="ml-2 mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2.5">
+                            <span className="text-amber-500 text-base shrink-0">💬</span>
+                            <p className="text-sm text-amber-800 font-medium leading-snug">{meal.swapNote}</p>
                           </div>
                         )}
                       </div>
