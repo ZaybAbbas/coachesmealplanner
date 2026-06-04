@@ -173,7 +173,12 @@ export default function App() {
       - Available foods: ${formData.availableFoods || 'Standard access'}
 
       YOUR RULES:
-      1. Calculate Estimated TDEE, Daily Calorie Target (300-500 deficit for fat loss, maintenance for muscle), Daily Protein Target (1.8-2.2g/kg), and Fibre (min 25g, aim 30g).
+      1. CALCULATE TDEE USING THE MIFFLIN-ST JEOR FORMULA (all clients are women):
+          Step 1 — BMR = (10 × weight in kg) + (6.25 × height in cm) − (5 × age) − 161
+          Step 2 — TDEE = BMR × activity multiplier:
+              Sedentary = 1.2 | Lightly active = 1.375 | Moderately active = 1.55 | Very active = 1.725
+          Then set the Daily Protein Target (1.8-2.2g per kg of bodyweight) and Fibre (min 25g, aim 30g).
+          Show the calculated TDEE in the targets section. The Daily Calorie Target is then set by Rule 17 below.
       2. Use South Asian meals as the foundation (Rice, roti, dal, lentils, sabzi, curry, yoghurt, eggs, legumes). No Western defaults unless requested.
       3. Every meal MUST include a clear protein source. Dal/lentils alone do not count as sufficient protein without another source.
       4. Fibre must come from whole foods.
@@ -226,7 +231,15 @@ export default function App() {
           CUPS — DO NOT USE FOR: chapatis (1 chapati), whole eggs (2 eggs), baby potatoes (units or grams), fish fillets (1 fillet or grams), chicken breast (1 breast or grams), smoked salmon (grams), protein bars (1 bar), packaged yoghurt pots (1 x 150g Skyr), bread/bagels/thins (units), Babybel (units), rice cakes (units), avocado (½ avocado).
           DAIRY-FREE FALLBACK: If dairy-free selected, replace Greek yoghurt/Skyr cup portions with lentils, chickpeas, or keema instead.
       16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", build every meal using ONLY the listed ingredients. One exception: if protein is genuinely too low for a meal, you may add one small approved booster (e.g. a side of fat-free Greek yoghurt, a Skyr pot, or egg whites) — nothing else.
-      17. CALORIE TARGETS: Fat loss = 300-500 kcal deficit, never below 1200-1300 kcal/day. Maintenance = no deficit, eat at TDEE. Muscle building/recomposition = at TDEE or slight surplus. Cap any deficit at 500 kcal max. Do NOT include any warning note in the tips — just silently apply the correct target.
+      17. CALORIE TARGET & SAFE DEFICIT (work backwards from the client's goal, but keep it sensible):
+          - For FAT LOSS, calculate the deficit needed to reach their target by their deadline:
+              a. If the goal/timeframe mentions a specific amount to lose (e.g. "lose 4kg in 8 weeks"), work out the required daily deficit: (kg to lose × 7700) ÷ (number of weeks × 7).
+              b. If that required deficit lands between 300 and 500 kcal, use it. This is the safe range.
+              c. If the required deficit is MORE than 500 kcal, the goal is too aggressive — CAP the deficit at 500 kcal and add a REALITY CHECK as the FIRST tip. In Z.A Training tone, gently explain their target is a bit too fast for a healthy, lasting pace, tell them roughly how long it WILL realistically take at a safe 500 kcal deficit, and reassure them this is the version that actually stays off. (e.g. "Real talk — 4kg in 4 weeks is pushing it. At a safe pace you're looking at more like 8-10 weeks, and that's the version that actually stays off. Trust the process!")
+              d. If the required deficit is LESS than 300 kcal (very relaxed goal), use a 300 kcal deficit so progress is still felt.
+              e. If no specific kg target is given, default to a sensible 400 kcal deficit.
+          - HARD FLOOR: The final daily calorie target must NEVER drop below 1200-1300 kcal/day, no matter what. If hitting the deadline would require going below this floor, stay at the floor and use the reality check tip.
+          - MAINTENANCE = eat at TDEE, no deficit. MUSCLE BUILDING/RECOMPOSITION = at TDEE or slight surplus (no reality check needed for these).
       18. SHOPPING LIST RULE: Maximum 4 items per category. Only include what is genuinely needed. If cooking for Family or Couple, add approximate weekly quantity for bulk items e.g. "Chicken mince (~1.2kg for the week)".
       19. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
 
