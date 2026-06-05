@@ -203,7 +203,9 @@ export default function App() {
       YOUR RULES:
 
       ⛔ ABSOLUTE RULE — READ FIRST, NEVER BREAK: The following foods are 100% BANNED and must NEVER appear in ANY meal, snack, ingredient, side, or suggestion under ANY circumstances, even if the client typed them into their available foods: Pork, Bacon, Ham, Alcohol, Turkey, ROTISSERIE CHICKEN, any pre-cooked/shop-bought rotisserie or roast chicken, Tempeh, Tofu, Medallions or any fancy/expensive cuts of meat, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, and anything non-halal. If you ever think of using cooked chicken, use plain cooked chicken breast, chicken thighs, or chicken keema (mince) — NEVER rotisserie chicken. This rule overrides every other instruction including the client's own ingredient list.
-
+${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
+      🔒 STRICT FOOD LIST MODE IS ON — READ CAREFULLY: The client has given their OWN food list: "${formData.availableFoods}". You must build EVERY meal using ONLY foods from that exact list. Do NOT add ANY food that is not on it — no almonds, no smoked salmon, no yoghurt, no fruit, no nuts, nothing extra. The Z.A master food list and signature meals/snacks in Rule 10 are SUSPENDED and must be completely ignored. The only things you may add are basic seasonings (salt, pepper, spices, onion/garlic/tomato for cooking, oil, water). See Rule 16 for the one tightly-limited protein fallback. When in doubt, leave it out.
+` : ''}
       1. CALCULATE TDEE USING THE MIFFLIN-ST JEOR FORMULA (all clients are women):
           Step 1 — BMR = (10 × weight in kg) + (6.25 × height in cm) − (5 × age) − 161
           Step 2 — TDEE = BMR × activity multiplier:
@@ -219,6 +221,8 @@ export default function App() {
       8. HORMONES/MEDICAL: If perimenopausal/menopausal, increase calcium and prioritise protein. If PCOS/Insulin Resistance, reduce refined carbs, use low-GI, pair carbs with protein/fat.
       9. Z.A TRAINING TONE: Keep language highly practical, direct, and jargon-free. Written to the client. Incorporate my signature coaching tone (e.g., "Chill on the oil!", "Comfort food, don't overdo it", "Use common sense", "Air-fry to save time", "Always WhatsApp me if you are ever unsure").
       10. Z.A TRAINING MASTER FINGERPRINT:
+
+          ‼️ THIS ENTIRE RULE 10 (the master food list, signature meals, signature snacks, hacks) APPLIES ONLY WHEN "Available foods" IS "Standard access". If the client provided their own food list, IGNORE everything in Rule 10 — do NOT pull smoked salmon, almonds, or any other food from here. Rule 16 takes over completely in that case.
 
           APPROVED FOODS MASTER LIST:
           When "Available foods" is "Standard access" (no list provided), build ALL meals using ONLY foods from this list. Do NOT introduce any food not listed here.
@@ -261,7 +265,13 @@ export default function App() {
           CUPS — USE FOR: cooked rice, couscous, pasta, oats, keema/mince in sauce, any curry or sauce-based dish, dal/lentils (cooked), chickpeas/legumes (cooked), loose Greek yoghurt or Skyr (not in a packet), overnight oats, porridge, liquid egg whites, soups/stews.
           CUPS — DO NOT USE FOR: chapatis (1 chapati), whole eggs (2 eggs), baby potatoes (units or grams), fish fillets (1 fillet or grams), chicken breast (1 breast or grams), smoked salmon (grams), protein bars (1 bar), packaged yoghurt pots (1 x 150g Skyr), bread/bagels/thins (units), Babybel (units), rice cakes (units), avocado (½ avocado).
           DAIRY-FREE FALLBACK: If dairy-free selected, replace Greek yoghurt/Skyr cup portions with lentils, chickpeas, or keema instead.
-      16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}". If this is NOT "Standard access", build every meal using ONLY the listed ingredients. One exception: if protein is genuinely too low for a meal, you may add one small approved booster (e.g. a side of fat-free Greek yoghurt, a Skyr pot, or egg whites) — nothing else.
+      16. STRICT INGREDIENT MATCHING: The client has listed their available foods as: "${formData.availableFoods || 'Standard access'}".
+          If this is NOT "Standard access", you are in STRICT MODE:
+          - Build EVERY meal using ONLY the exact foods on the client's list. Do NOT add any food that is not on their list — no smoked salmon, no almonds, no yoghurt, no fruit, nothing extra, unless it appears on their list.
+          - The ONLY things you may add without being on the list are basic cooking seasonings the dish needs: salt, pepper, spices/masala, onion/garlic/ginger/tomato for a curry base, cooking spray, a little oil, water, lemon. These are NOT "foods", they are seasonings.
+          - The Rule 10 master list, signature meals, signature snacks and food-based hacks are SUSPENDED and must be ignored entirely.
+          - PROTEIN FALLBACK (use sparingly): Only if a meal genuinely has no protein source from the client's own list, you may add ONE of these and nothing else: fat-free Greek yoghurt, a Skyr pot, or egg whites. Prefer using more of the client's OWN listed protein first. Never use this fallback to add nuts, fish, or any other food.
+          - If you are ever unsure whether a food is allowed, the answer is NO — leave it out.
       17. CALORIE TARGET & SAFE DEFICIT (work backwards from the client's goal, but keep it sensible):
           - For FAT LOSS, calculate the deficit needed to reach their target by their deadline:
               a. If the goal/timeframe mentions a specific amount to lose (e.g. "lose 4kg in 8 weeks"), work out the required daily deficit: (kg to lose × 7700) ÷ (number of weeks × 7).
