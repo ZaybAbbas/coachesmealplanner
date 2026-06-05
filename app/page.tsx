@@ -42,6 +42,31 @@ export default function App() {
   const [streamedChars, setStreamedChars] = useState(0);
   const [convertFile, setConvertFile] = useState<File | null>(null);
   const [isConverting, setIsConverting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // --- Manual edit helpers (let the coach tweak the plan before sending) ---
+  const updateMeal = (weekIdx, dayIdx, mealIdx, field, value) => {
+    setGeneratedPlan(prev => {
+      const next = structuredClone(prev);
+      next.weeks[weekIdx].days[dayIdx].meals[mealIdx][field] = value;
+      return next;
+    });
+  };
+  const updateDayTotals = (weekIdx, dayIdx, value) => {
+    setGeneratedPlan(prev => {
+      const next = structuredClone(prev);
+      next.weeks[weekIdx].days[dayIdx].dailyTotals = value;
+      return next;
+    });
+  };
+  const updateTarget = (field, value) => {
+    setGeneratedPlan(prev => {
+      const next = structuredClone(prev);
+      if (!next.targets) next.targets = {};
+      next.targets[field] = value;
+      return next;
+    });
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -397,10 +422,23 @@ export default function App() {
           <button onClick={() => setShowDailyTotals(!showDailyTotals)} className="flex items-center text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-50 px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors">
             {showDailyTotals ? 'Hide Daily Totals' : 'Show Daily Totals'}
           </button>
-          <button onClick={() => window.print()} className="flex items-center bg-red-700 hover:bg-red-800 text-white px-6 py-2 rounded-lg shadow-md font-bold transition-all">
+          <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors border ${isEditing ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-50'}`}>
+            {isEditing ? '✓ Done Editing' : '✏️ Edit Plan'}
+          </button>
+          <button onClick={() => { setIsEditing(false); setTimeout(() => window.print(), 50); }} className="flex items-center bg-red-700 hover:bg-red-800 text-white px-6 py-2 rounded-lg shadow-md font-bold transition-all">
             <Download className="w-4 h-4 mr-2" /> Export to PDF
           </button>
         </div>
+
+        {/* Edit mode helper banner */}
+        {isEditing && (
+          <div className="max-w-[210mm] w-full mb-6 print:hidden px-4 md:px-0">
+            <div className="bg-green-50 border border-green-300 rounded-xl px-5 py-3 text-green-800 text-sm font-medium flex items-center gap-2">
+              <span className="text-lg">✏️</span>
+              <span><strong>Edit mode is ON.</strong> Click any meal name, description, portion, or number to change it. Tap "Done Editing" when finished.</span>
+            </div>
+          </div>
+        )}
 
         {/* --- START DOCUMENT --- */}
         <div className="document-container w-full max-w-[210mm] bg-white shadow-2xl print:shadow-none text-zinc-900 relative">
@@ -427,16 +465,35 @@ export default function App() {
               <div className="grid grid-cols-2 gap-6">
                 <div className="bg-black/60 p-6 rounded-2xl border border-zinc-800">
                   <p className="text-zinc-400 text-xs font-bold mb-1 uppercase tracking-widest">Daily Calories</p>
-                  <p className="text-4xl font-black text-white">{generatedPlan?.targets?.calories || "TBC"}</p>
-                  <p className="text-red-500 text-xs mt-2 font-medium">Est. TDEE: {generatedPlan?.targets?.tdee || "TBC"}</p>
+                  {isEditing ? (
+                    <input value={generatedPlan?.targets?.calories || ''} onChange={(e) => updateTarget('calories', e.target.value)} className="text-3xl font-black text-white bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-1 w-full outline-none focus:ring-2 focus:ring-red-500" />
+                  ) : (
+                    <p className="text-4xl font-black text-white">{generatedPlan?.targets?.calories || "TBC"}</p>
+                  )}
+                  {isEditing ? (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-red-500 text-xs font-medium shrink-0">Est. TDEE:</span>
+                      <input value={generatedPlan?.targets?.tdee || ''} onChange={(e) => updateTarget('tdee', e.target.value)} className="text-red-300 text-xs bg-zinc-800 border border-zinc-600 rounded px-2 py-0.5 w-full outline-none focus:ring-2 focus:ring-red-500" />
+                    </div>
+                  ) : (
+                    <p className="text-red-500 text-xs mt-2 font-medium">Est. TDEE: {generatedPlan?.targets?.tdee || "TBC"}</p>
+                  )}
                 </div>
                 <div className="bg-black/60 p-6 rounded-2xl border border-zinc-800">
                   <p className="text-zinc-400 text-xs font-bold mb-1 uppercase tracking-widest">Daily Protein</p>
-                  <p className="text-4xl font-black text-white">{generatedPlan?.targets?.protein || "TBC"}</p>
+                  {isEditing ? (
+                    <input value={generatedPlan?.targets?.protein || ''} onChange={(e) => updateTarget('protein', e.target.value)} className="text-3xl font-black text-white bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-1 w-full outline-none focus:ring-2 focus:ring-red-500" />
+                  ) : (
+                    <p className="text-4xl font-black text-white">{generatedPlan?.targets?.protein || "TBC"}</p>
+                  )}
                 </div>
                 <div className="bg-black/60 p-6 rounded-2xl border border-zinc-800">
                   <p className="text-zinc-400 text-xs font-bold mb-1 uppercase tracking-widest">Daily Fibre</p>
-                  <p className="text-4xl font-black text-white">{generatedPlan?.targets?.fibre || "TBC"}</p>
+                  {isEditing ? (
+                    <input value={generatedPlan?.targets?.fibre || ''} onChange={(e) => updateTarget('fibre', e.target.value)} className="text-3xl font-black text-white bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-1 w-full outline-none focus:ring-2 focus:ring-red-500" />
+                  ) : (
+                    <p className="text-4xl font-black text-white">{generatedPlan?.targets?.fibre || "TBC"}</p>
+                  )}
                 </div>
                 <div className="bg-black/60 p-6 rounded-2xl border border-zinc-800">
                   <p className="text-zinc-400 text-xs font-bold mb-1 uppercase tracking-widest">Protocol Length</p>
@@ -531,7 +588,11 @@ export default function App() {
                       {showDailyTotals && (
                         <div className="text-right bg-zinc-50 px-4 py-2 rounded-xl border border-zinc-200">
                           <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-0.5">Daily Totals</span>
-                          <span className="font-bold text-black text-sm">{day?.dailyTotals || "TBC"}</span>
+                          {isEditing ? (
+                            <input value={day?.dailyTotals || ''} onChange={(e) => updateDayTotals(weekIdx, dayIdx, e.target.value)} className="font-bold text-black text-sm text-right border border-zinc-300 rounded-md px-2 py-0.5 outline-none focus:ring-2 focus:ring-red-400 w-48" />
+                          ) : (
+                            <span className="font-bold text-black text-sm">{day?.dailyTotals || "TBC"}</span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -542,20 +603,40 @@ export default function App() {
                       <div key={mealIdx} className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-6 relative overflow-hidden">
                         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-red-700 rounded-l-2xl"></div>
                         
-                        <div className="flex justify-between items-start mb-3 pl-2">
-                          <span className="inline-block px-3 py-1 bg-red-50 text-red-800 text-xs font-bold tracking-wide uppercase rounded-md">
-                            {meal?.type || "Meal"}
-                          </span>
-                          <span className="text-xs font-bold text-zinc-500 bg-zinc-100 px-3 py-1 rounded-md border border-zinc-200">
-                            {meal?.metrics || "TBC"}
-                          </span>
+                        <div className="flex justify-between items-start mb-3 pl-2 gap-3">
+                          {isEditing ? (
+                            <input value={meal?.type || ''} onChange={(e) => updateMeal(weekIdx, dayIdx, mealIdx, 'type', e.target.value)} className="px-3 py-1 bg-red-50 text-red-800 text-xs font-bold tracking-wide uppercase rounded-md border border-red-300 outline-none focus:ring-2 focus:ring-red-400 w-1/3" />
+                          ) : (
+                            <span className="inline-block px-3 py-1 bg-red-50 text-red-800 text-xs font-bold tracking-wide uppercase rounded-md">
+                              {meal?.type || "Meal"}
+                            </span>
+                          )}
+                          {isEditing ? (
+                            <input value={meal?.metrics || ''} onChange={(e) => updateMeal(weekIdx, dayIdx, mealIdx, 'metrics', e.target.value)} className="text-xs font-bold text-zinc-700 bg-zinc-100 px-3 py-1 rounded-md border border-zinc-300 outline-none focus:ring-2 focus:ring-red-400 text-right w-1/2" />
+                          ) : (
+                            <span className="text-xs font-bold text-zinc-500 bg-zinc-100 px-3 py-1 rounded-md border border-zinc-200">
+                              {meal?.metrics || "TBC"}
+                            </span>
+                          )}
                         </div>
-                        <h4 className="text-xl font-bold text-black mb-2 pl-2">{meal?.name || "Recipe"}</h4>
-                        <p className="text-zinc-600 text-sm mb-3 leading-relaxed pl-2">{meal?.description || ""}</p>
-                        {meal?.portionGuide && (
+                        {isEditing ? (
+                          <input value={meal?.name || ''} onChange={(e) => updateMeal(weekIdx, dayIdx, mealIdx, 'name', e.target.value)} className="text-xl font-bold text-black mb-2 ml-2 w-[calc(100%-0.5rem)] border border-zinc-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-red-400" />
+                        ) : (
+                          <h4 className="text-xl font-bold text-black mb-2 pl-2">{meal?.name || "Recipe"}</h4>
+                        )}
+                        {isEditing ? (
+                          <textarea value={meal?.description || ''} onChange={(e) => updateMeal(weekIdx, dayIdx, mealIdx, 'description', e.target.value)} rows={2} className="text-zinc-600 text-sm mb-3 ml-2 w-[calc(100%-0.5rem)] leading-relaxed border border-zinc-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-red-400 resize-y" />
+                        ) : (
+                          <p className="text-zinc-600 text-sm mb-3 leading-relaxed pl-2">{meal?.description || ""}</p>
+                        )}
+                        {(meal?.portionGuide || isEditing) && (
                           <div className="ml-2 mb-3 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
                             <p className="text-xs font-black text-red-700 uppercase tracking-wider mb-1">Your Portion</p>
-                            <p className="text-sm font-semibold text-zinc-800 leading-relaxed">{meal.portionGuide}</p>
+                            {isEditing ? (
+                              <textarea value={meal?.portionGuide || ''} onChange={(e) => updateMeal(weekIdx, dayIdx, mealIdx, 'portionGuide', e.target.value)} rows={2} className="text-sm font-semibold text-zinc-800 w-full leading-relaxed border border-red-200 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-red-400 resize-y bg-white" />
+                            ) : (
+                              <p className="text-sm font-semibold text-zinc-800 leading-relaxed">{meal.portionGuide}</p>
+                            )}
                           </div>
                         )}
                         
