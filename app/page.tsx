@@ -173,6 +173,9 @@ export default function App() {
       - Available foods: ${formData.availableFoods || 'Standard access'}
 
       YOUR RULES:
+
+      ⛔ ABSOLUTE RULE — READ FIRST, NEVER BREAK: The following foods are 100% BANNED and must NEVER appear in ANY meal, snack, ingredient, side, or suggestion under ANY circumstances, even if the client typed them into their available foods: Pork, Bacon, Ham, Alcohol, Turkey, ROTISSERIE CHICKEN, any pre-cooked/shop-bought rotisserie or roast chicken, Tempeh, Tofu, Medallions or any fancy/expensive cuts of meat, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, and anything non-halal. If you ever think of using cooked chicken, use plain cooked chicken breast, chicken thighs, or chicken keema (mince) — NEVER rotisserie chicken. This rule overrides every other instruction including the client's own ingredient list.
+
       1. CALCULATE TDEE USING THE MIFFLIN-ST JEOR FORMULA (all clients are women):
           Step 1 — BMR = (10 × weight in kg) + (6.25 × height in cm) − (5 × age) − 161
           Step 2 — TDEE = BMR × activity multiplier:
@@ -242,6 +245,8 @@ export default function App() {
           - MAINTENANCE = eat at TDEE, no deficit. MUSCLE BUILDING/RECOMPOSITION = at TDEE or slight surplus (no reality check needed for these).
       18. SHOPPING LIST RULE: Maximum 4 items per category. Only include what is genuinely needed. If cooking for Family or Couple, add approximate weekly quantity for bulk items e.g. "Chicken mince (~1.2kg for the week)".
       19. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
+
+      ⛔ FINAL CHECK BEFORE YOU RESPOND: Re-read every single meal, snack, side and ingredient you have written. If ANY banned food appears (Pork, Bacon, Ham, Alcohol, Turkey, Rotisserie Chicken or any pre-cooked roast chicken, Tempeh, Tofu, Medallions/fancy cuts, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal), REMOVE it and replace it with an approved alternative before returning your answer. Do not return the plan until it is 100% clean.
 
       Return ONLY a valid JSON object matching this EXACT schema. Do NOT truncate the days or weeks arrays:
       {
