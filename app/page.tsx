@@ -25,6 +25,7 @@ export default function App() {
     medicalFlags: 'None',
     durationWeeks: 1,
     approach: 'Calories & Macros',
+    carbPreference: 'Moderate',
     dietaryPreferences: 'Standard',
     regionalCuisine: 'Indian',
     cookingFor: 'Herself only',
@@ -104,6 +105,7 @@ export default function App() {
       medicalFlags: random(medicalFlagsList),
       durationWeeks: random(durations),
       approach: random(approaches),
+      carbPreference: random(["Low Carb", "Moderate", "Higher Carb"]),
       dietaryPreferences: random(diets),
       regionalCuisine: random(cuisines),
       cookingFor: random(cookingForOptions),
@@ -188,6 +190,7 @@ export default function App() {
       - Full Protocol Duration: ${formData.durationWeeks} weeks
       - Menu Length to Generate: ${aiWeeks} week (Client will repeat this cycle if full duration is longer)
       - Dietary approach: ${formData.approach}
+      - Carb preference: ${formData.carbPreference}
       - Dietary preferences/restrictions: ${formData.dietaryPreferences}
       - Regional cuisine: ${formData.regionalCuisine}
       - Cooking for: ${formData.cookingFor}
@@ -268,6 +271,11 @@ export default function App() {
               e. If no specific kg target is given, default to a sensible 400 kcal deficit.
           - HARD FLOOR: The final daily calorie target must NEVER drop below 1200-1300 kcal/day, no matter what. If hitting the deadline would require going below this floor, stay at the floor and use the reality check tip.
           - MAINTENANCE = eat at TDEE, no deficit. MUSCLE BUILDING/RECOMPOSITION = at TDEE or slight surplus (no reality check needed for these).
+      17b. CARB PREFERENCE: Adjust the carb-to-fat balance of meals based on the client's "Carb preference". The DAILY CALORIE TARGET from Rule 17 NEVER changes — only the food mix shifts.
+          - "Moderate" (default): normal balanced split. Carbs roughly 40-45% of calories.
+          - "Low Carb": noticeably reduce starchy carbs (smaller rice/roti/potato portions, swap some rice for cauliflower rice, more non-starchy veg). Carbs roughly 20-30% of calories, with the gap filled by extra protein and healthy fats. ALSO bump the protein target slightly — push it toward the TOP of the range (around 2.2-2.4g per kg bodyweight) to keep the client full and protect muscle. Keep this bump small and sensible.
+          - "Higher Carb": more starchy carbs (larger rice/oats/potato portions, add fruit), leaner proteins and less added fat. Carbs roughly 50-55% of calories. Protein stays at the standard 1.8-2.2g/kg.
+          - MEDICAL OVERRIDE: Medical needs ALWAYS win over carb preference. If the client has PCOS/Insulin Resistance, "Higher Carb" must use LOW-GI WHOLE-FOOD carbs only (oats, sweet potato, lentils, quinoa) — never refined carbs or large white rice portions. Low-GI/whole-food rules are never broken to satisfy a carb preference.
       18. SHOPPING LIST RULE: Maximum 4 items per category. Only include what is genuinely needed. If cooking for Family or Couple, add approximate weekly quantity for bulk items e.g. "Chicken mince (~1.2kg for the week)".
       19. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
 
@@ -856,6 +864,12 @@ export default function App() {
                 <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Religious Fasting</label>
                 <select name="religiousFasting" value={formData.religiousFasting} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none bg-white transition-all text-black font-medium cursor-pointer">
                   <option>None</option><option>Ramadan</option><option>Intermittent Fasting</option><option>Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Carb Preference</label>
+                <select name="carbPreference" value={formData.carbPreference} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none bg-white transition-all text-black font-medium cursor-pointer">
+                  <option>Low Carb</option><option>Moderate</option><option>Higher Carb</option>
                 </select>
               </div>
               <div className="md:col-span-3">
