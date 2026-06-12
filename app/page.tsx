@@ -44,6 +44,8 @@ export default function App() {
   const [convertFile, setConvertFile] = useState<File | null>(null);
   const [isConverting, setIsConverting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [planMode, setPlanMode] = useState('full'); // 'full' or 'starter'
+  const [starterPlan, setStarterPlan] = useState<any>(null);
 
   // --- Manual edit helpers (let the coach tweak the plan before sending) ---
   const updateMeal = (weekIdx, dayIdx, mealIdx, field, value) => {
@@ -407,6 +409,87 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
     }
   };
 
+  const generateStarterPlan = async () => {
+    setView('generating');
+    setError('');
+
+    const starterPrompt = `
+      You are Zayb, an expert nutrition coach for busy South Asian women in the UK. You are creating a gentle "First Two Weeks" STARTER plan for a brand-new client. This is NOT a strict meal plan — it eases them in by focusing on fundamentals and giving them flexible meal options to pick from. NO calorie counting, NO macros, NO daily totals.
+
+      CLIENT:
+      - Name: ${formData.clientName}
+      - Goal: ${formData.goal}
+      - Regional cuisine: ${formData.regionalCuisine}
+      - Dislikes / allergies / restrictions: ${formData.dietaryPreferences}
+      - Foods they have/want to use (optional): ${formData.availableFoods || 'No specific list — use your judgement'}
+
+      ⛔ ABSOLUTE RULE: STRICTLY HALAL. NEVER include Pork, Bacon, Ham, Alcohol, Turkey, Rotisserie Chicken, Tempeh, Tofu, Medallions, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal.
+
+      THE FOUR FUNDAMENTALS (rewrite each in your warm, direct Z.A Training voice, personalised to this client):
+      1. Reduce junk food now, with the aim of cutting it right down over time.
+      2. Eat two sources of fruit & veg every day (fibre naturally goes up as this increases — you don't need to track fibre separately).
+      3. Build this up gradually — small steady steps, not all at once.
+      4. Get one to two lean protein sources in every day until it becomes second nature.
+
+      MIX & MATCH MENU: Give EXACTLY 5 options each for breakfast, lunch, dinner, and snacks. The client picks whichever they fancy each day — they are NOT assigned to days. Each option = a short meal name plus a simple portion in plain English (e.g. "Eggs on toast — 2 eggs, 1 brown toast, handful spinach"). Every option must have a clear protein. Use the client's cuisine and the Z.A Inspiration Bank style (protein-first, "1.5 fistful" desi portions, Greek yoghurt to bump protein, etc.). Snacks should be simple and protein-friendly. NO calorie numbers anywhere.
+
+      SMARTER SWAPS: Give 6 simple "swap this for that" tips in Zayb's style (e.g. white bread → brown bread; fried → air-fried; paratha → chapati; sugary drink → sugar-free; full-fat → light; lamb mince → chicken mince). Each with a very short reason.
+
+      Return ONLY a valid JSON object in this EXACT schema:
+      {
+        "title": "Your First Two Weeks",
+        "welcome": "A short, warm, personal note to ${formData.clientName} in Zayb's voice — reassure them this is about easing in, not perfection.",
+        "fundamentals": ["fundamental 1", "fundamental 2", "fundamental 3", "fundamental 4"],
+        "menu": {
+          "breakfast": ["option 1", "option 2", "option 3", "option 4", "option 5"],
+          "lunch": ["option 1", "option 2", "option 3", "option 4", "option 5"],
+          "dinner": ["option 1", "option 2", "option 3", "option 4", "option 5"],
+          "snacks": ["option 1", "option 2", "option 3", "option 4", "option 5"]
+        },
+        "swaps": [{"from": "White bread", "to": "Brown bread", "why": "More fibre, keeps you fuller"}],
+        "closingTip": "One short motivating line in Zayb's voice."
+      }
+    `;
+
+    const payload = { contents: [{ parts: [{ text: starterPrompt }] }] };
+
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`API Error (${response.status}): ${errorData}`);
+      }
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullText += decoder.decode(value, { stream: true });
+        setStreamedChars(fullText.length);
+      }
+      let cleanText = fullText.replace(/```json/gi, '').replace(/```/gi, '').trim();
+      const firstBrace = cleanText.indexOf('{');
+      const lastBrace = cleanText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+      }
+      const parsedData = JSON.parse(cleanText);
+      setStarterPlan(parsedData);
+      setStreamedChars(0);
+      setView('starterPreview');
+    } catch (err: any) {
+      console.error("Starter Plan Error:", err);
+      setError(`🚨 ERROR: ${err.message}`);
+      setStreamedChars(0);
+      setView('dashboard');
+    }
+  };
+
   if (view === 'generating') {
     const progress = Math.min(Math.round((streamedChars / 12000) * 100), 99);
     return (
@@ -759,6 +842,126 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
     );
   }
 
+  if (view === 'starterPreview' && starterPlan) {
+    const menu = starterPlan.menu || {};
+    const sections = [
+      { key: 'breakfast', label: 'Breakfast', emoji: '🍳' },
+      { key: 'lunch', label: 'Lunch', emoji: '🥗' },
+      { key: 'dinner', label: 'Dinner', emoji: '🍛' },
+      { key: 'snacks', label: 'Snacks', emoji: '🍎' },
+    ];
+    return (
+      <div className="min-h-screen bg-zinc-200 py-8 print:py-0 print:bg-white flex flex-col items-center">
+        {/* Controls */}
+        <div className="max-w-[210mm] w-full flex justify-between items-center mb-6 print:hidden px-4 md:px-0">
+          <button onClick={() => setView('dashboard')} className="flex items-center text-zinc-600 hover:text-black bg-white px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors">
+            <ArrowLeft className="w-4 h-4 mr-2" /> Edit Details
+          </button>
+          <button onClick={() => window.print()} className="flex items-center bg-red-700 hover:bg-red-800 text-white px-6 py-2 rounded-lg shadow-md font-bold transition-all">
+            <Download className="w-4 h-4 mr-2" /> Export to PDF
+          </button>
+        </div>
+
+        <div className="document-container w-full max-w-[210mm] bg-white shadow-2xl print:shadow-none text-zinc-900 relative">
+
+          {/* Cover + Fundamentals */}
+          <div className="page break-after-page min-h-[297mm] flex flex-col relative overflow-hidden bg-black text-white p-16">
+            <div className="absolute top-0 right-0 w-full h-full opacity-30 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-red-700 via-transparent to-transparent pointer-events-none"></div>
+            <header className="relative z-10 flex flex-col items-start mt-4">
+              <div className="bg-white p-4 rounded-3xl shadow-xl shadow-red-900/20 mb-8">
+                <img src={LOGO_URL} alt="Z.A Training Logo" className="w-20 h-20 object-contain" />
+              </div>
+              <h3 className="text-red-500 font-bold tracking-[0.2em] uppercase mb-3 text-sm">Z.A Training — Getting Started</h3>
+              <h1 className="text-5xl font-extrabold leading-tight mb-4 text-white">{starterPlan.title || 'Your First Two Weeks'}</h1>
+              <p className="text-xl text-zinc-400 font-light">Prepared for <span className="text-white font-semibold">{formData.clientName}</span></p>
+            </header>
+            {starterPlan.welcome && (
+              <div className="relative z-10 mt-8 bg-zinc-900/60 p-6 rounded-2xl border border-red-900/40">
+                <p className="text-zinc-200 leading-relaxed italic">{starterPlan.welcome}</p>
+              </div>
+            )}
+            {Array.isArray(starterPlan.fundamentals) && (
+              <div className="relative z-10 mt-8">
+                <h2 className="text-2xl font-bold text-white mb-5 flex items-center"><Target className="w-6 h-6 mr-3 text-red-500" /> Your Fundamentals</h2>
+                <div className="space-y-3">
+                  {starterPlan.fundamentals.map((f: string, i: number) => (
+                    <div key={i} className="flex items-start bg-black/50 p-4 rounded-xl border border-zinc-800">
+                      <span className="text-red-500 font-black text-lg mr-4 shrink-0">{i + 1}</span>
+                      <p className="text-zinc-200 font-medium leading-snug">{f}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Mix & Match Menu */}
+          <div className="page break-before-page break-after-page min-h-[297mm] p-16 pt-20 bg-white flex flex-col relative overflow-hidden">
+            <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
+              <img src={LOGO_URL} className="w-[500px] h-[500px] object-contain grayscale" alt="" />
+            </div>
+            <header className="relative z-10 mb-8 border-b-2 border-zinc-100 pb-5 flex justify-between items-end">
+              <div>
+                <h4 className="text-red-700 font-bold tracking-widest uppercase text-sm mb-1">Mix & Match</h4>
+                <h2 className="text-4xl font-black text-black">Pick & Choose Meals</h2>
+                <p className="text-zinc-500 mt-1 font-medium">Choose any one from each section, each day. No rules — just rotate what you fancy.</p>
+              </div>
+              <img src={LOGO_URL} alt="ZA" className="w-10 h-10 object-contain opacity-80" />
+            </header>
+            <div className="relative z-10 grid grid-cols-2 gap-6">
+              {sections.map((s) => (
+                <div key={s.key} className="bg-zinc-50 border border-zinc-200 rounded-2xl p-6">
+                  <h3 className="font-black text-black uppercase tracking-wider text-sm mb-4 flex items-center">
+                    <span className="mr-2 text-lg">{s.emoji}</span> {s.label}
+                  </h3>
+                  <ul className="space-y-3">
+                    {(Array.isArray(menu[s.key]) ? menu[s.key] : []).map((opt: string, i: number) => (
+                      <li key={i} className="flex items-start text-zinc-700 text-sm font-medium">
+                        <div className="w-1.5 h-1.5 bg-red-600 rounded-full mr-3 mt-1.5 shrink-0"></div>
+                        {opt}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Smarter Swaps */}
+          <div className="page break-before-page min-h-[297mm] p-16 pt-20 bg-zinc-50 flex flex-col relative overflow-hidden">
+            <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
+              <img src={LOGO_URL} className="w-[500px] h-[500px] object-contain grayscale" alt="" />
+            </div>
+            <header className="relative z-10 mb-8 border-b-2 border-zinc-200 pb-5 flex justify-between items-end">
+              <div>
+                <h4 className="text-red-700 font-bold tracking-widest uppercase text-sm mb-1">Easy Wins</h4>
+                <h2 className="text-4xl font-black text-black">Smarter Swaps</h2>
+                <p className="text-zinc-500 mt-1 font-medium">Small switches that make a big difference.</p>
+              </div>
+              <img src={LOGO_URL} alt="ZA" className="w-10 h-10 object-contain opacity-80" />
+            </header>
+            <div className="relative z-10 space-y-3">
+              {(Array.isArray(starterPlan.swaps) ? starterPlan.swaps : []).map((sw: any, i: number) => (
+                <div key={i} className="bg-white border border-zinc-200 rounded-xl p-5 flex items-center gap-4 shadow-sm">
+                  <span className="text-zinc-400 font-semibold line-through shrink-0">{sw.from}</span>
+                  <span className="text-red-600 font-black shrink-0">→</span>
+                  <span className="text-black font-bold shrink-0">{sw.to}</span>
+                  {sw.why && <span className="text-zinc-500 text-sm ml-auto text-right">{sw.why}</span>}
+                </div>
+              ))}
+            </div>
+            {starterPlan.closingTip && (
+              <div className="relative z-10 mt-10 bg-red-700 p-8 rounded-3xl shadow-2xl">
+                <p className="text-white font-bold text-lg leading-snug">{starterPlan.closingTip}</p>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
   // DEFAULT VIEW: COACH DASHBOARD
   return (
     <div className="min-h-screen bg-zinc-100 font-sans text-zinc-900 pb-24 selection:bg-red-200 selection:text-red-900">
@@ -776,18 +979,36 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
       </nav>
 
       <main className="max-w-4xl mx-auto px-4 py-10">
+        {/* Tab Switcher */}
+        <div className="mb-8 inline-flex bg-zinc-200/70 p-1.5 rounded-2xl">
+          <button
+            onClick={() => setPlanMode('starter')}
+            className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${planMode === 'starter' ? 'bg-white text-black shadow-sm' : 'text-zinc-500 hover:text-zinc-800'}`}
+          >
+            🌱 Starter Plan
+          </button>
+          <button
+            onClick={() => setPlanMode('full')}
+            className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${planMode === 'full' ? 'bg-white text-black shadow-sm' : 'text-zinc-500 hover:text-zinc-800'}`}
+          >
+            📋 Full Meal Plan
+          </button>
+        </div>
+
         <div className="mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-black text-black mb-3">New Client Protocol</h1>
-            <p className="text-zinc-500 font-medium">Complete the intake data to generate an evidence-based, culturally adapted plan.</p>
+            <h1 className="text-4xl font-black text-black mb-3">{planMode === 'starter' ? 'Starter Plan' : 'New Client Protocol'}</h1>
+            <p className="text-zinc-500 font-medium">{planMode === 'starter' ? 'A gentle first-two-weeks plan to ease a brand-new client in — fundamentals + flexible meal options.' : 'Complete the intake data to generate an evidence-based, culturally adapted plan.'}</p>
           </div>
-          <button 
+          {planMode === 'full' && (
+          <button
             onClick={populateTestData}
             className="flex items-center justify-center text-sm font-bold text-red-800 bg-red-100 hover:bg-red-200 px-5 py-3 rounded-xl transition-all border border-red-200 shrink-0 shadow-sm"
           >
             <Wand2 className="w-4 h-4 mr-2" />
             Auto-Fill Test Data
           </button>
+          )}
         </div>
 
         {error && (
@@ -797,8 +1018,10 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
           </div>
         )}
 
+        {planMode === 'full' && (
+        <>
         <div className="space-y-8">
-          
+
           {/* SECTION 1: Personal & Body Metrics */}
           <div className="bg-white shadow-sm border border-zinc-200 rounded-2xl overflow-hidden">
             <div className="bg-zinc-50 border-b border-zinc-200 p-5">
@@ -1006,7 +1229,7 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
 
         {/* Generate Button Fixed Bottom */}
         <div className="fixed bottom-0 left-0 right-0 p-5 bg-white border-t border-zinc-200 shadow-[0_-15px_40px_rgba(0,0,0,0.05)] z-20 flex justify-center">
-          <button 
+          <button
             onClick={generateAIPlan}
             disabled={!isFormValid()}
             className="flex items-center bg-red-700 hover:bg-red-800 text-white px-12 py-4 rounded-2xl font-black text-lg shadow-xl shadow-red-900/20 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 max-w-4xl w-full justify-center tracking-wide"
@@ -1015,6 +1238,67 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
             Generate Final Protocol
           </button>
         </div>
+        </>
+        )}
+
+        {planMode === 'starter' && (
+        <>
+        <div className="space-y-8">
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-5 text-green-800 text-sm font-medium flex items-start gap-2">
+            <span className="text-lg">🌱</span>
+            <span>This makes a gentle, flexible starter plan for a brand-new client — fundamentals plus pick-and-choose meals. No calorie counting. Use this for their first couple of weeks, then switch them to the Full Meal Plan.</span>
+          </div>
+
+          <div className="bg-white shadow-sm border border-zinc-200 rounded-2xl overflow-hidden">
+            <div className="bg-zinc-50 border-b border-zinc-200 p-5">
+              <h2 className="text-lg font-black flex items-center text-black uppercase tracking-wide">
+                <User className="w-5 h-5 mr-3 text-red-700" /> Client Basics
+              </h2>
+            </div>
+            <div className="p-7 space-y-6">
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Full Name</label>
+                <input type="text" name="clientName" value={formData.clientName} onChange={handleInputChange} placeholder="Client's name" className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none transition-all text-black font-medium" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Primary Goal</label>
+                  <select name="goal" value={formData.goal} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none bg-white transition-all text-black font-medium cursor-pointer">
+                    <option>Fat loss</option><option>Maintenance</option><option>Build healthy habits</option><option>Muscle building</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Regional Cuisine</label>
+                  <select name="regionalCuisine" value={formData.regionalCuisine} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none bg-white transition-all text-black font-medium cursor-pointer">
+                    <option>Indian</option><option>Pakistani</option><option>Bangladeshi</option><option>Sri Lankan</option><option>Mixed / British-Asian</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Dislikes / Allergies / Restrictions</label>
+                <input type="text" name="dietaryPreferences" value={formData.dietaryPreferences} onChange={handleInputChange} placeholder="e.g. Vegetarian, no fish, lactose intolerant" className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none transition-all text-black font-medium" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Foods They Have / Want To Use <span className="text-zinc-400 normal-case">(optional)</span></label>
+                <textarea name="availableFoods" value={formData.availableFoods} onChange={handleInputChange} placeholder="Leave blank to let the AI choose from approved foods..." rows={2} className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none resize-none transition-all text-black font-medium" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Starter Generate Button Fixed Bottom */}
+        <div className="fixed bottom-0 left-0 right-0 p-5 bg-white border-t border-zinc-200 shadow-[0_-15px_40px_rgba(0,0,0,0.05)] z-20 flex justify-center">
+          <button
+            onClick={generateStarterPlan}
+            disabled={!formData.clientName?.trim()}
+            className="flex items-center bg-green-600 hover:bg-green-700 text-white px-12 py-4 rounded-2xl font-black text-lg shadow-xl shadow-green-900/20 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 max-w-4xl w-full justify-center tracking-wide"
+          >
+            <FileText className="w-6 h-6 mr-3" />
+            Generate Starter Plan
+          </button>
+        </div>
+        </>
+        )}
       </main>
     </div>
   );
