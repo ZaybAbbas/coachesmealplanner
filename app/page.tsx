@@ -62,6 +62,9 @@ export default function App() {
   const updateStarterSwap = (i, key, value) => {
     setStarterPlan(prev => { const n = structuredClone(prev); n.swaps[i][key] = value; return n; });
   };
+  const updateStarterHeading = (key, value) => {
+    setStarterPlan(prev => { const n = structuredClone(prev); if (!n.headings) n.headings = {}; n.headings[key] = value; return n; });
+  };
 
   // --- Manual edit helpers (let the coach tweak the plan before sending) ---
   const updateMeal = (weekIdx, dayIdx, mealIdx, field, value) => {
@@ -463,7 +466,9 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
 
       MIX & MATCH MENU: Give EXACTLY 5 options each for breakfast, lunch, dinner, and snacks. The client picks whichever they fancy each day — they are NOT assigned to days. Each option = a short meal name plus a simple portion in plain English (e.g. "Eggs on toast — 2 eggs, 1 brown toast, handful spinach"). Every option must have a clear protein. Use the client's cuisine and the Z.A Inspiration Bank style (protein-first, "1.5 fistful" desi portions, Greek yoghurt to bump protein, etc.). Snacks should be simple and protein-friendly. NO calorie numbers anywhere.
 
-      SMARTER SWAPS: Give 6 simple "swap this for that" tips in Zayb's style (e.g. white bread → brown bread; fried → air-fried; paratha → chapati; sugary drink → sugar-free; full-fat → light; lamb mince → chicken mince). Each with a very short reason.
+      SMARTER SWAPS: Give 6 simple "swap this for that" tips in Zayb's style (e.g. white bread → brown bread; fried → air-fried; paratha → chapati; sugary drink → sugar-free; full-fat → light; lamb mince → chicken mince). Each with a very short reason. NEVER suggest turkey, turkey mince, or any banned food as a swap.
+
+      ⛔ FINAL CHECK BEFORE YOU RESPOND: Re-read every meal option, snack and swap. If ANY banned food appears (Pork, Bacon, Ham, Alcohol, Turkey/turkey mince, Rotisserie Chicken, Tempeh, Tofu, Medallions, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal), REMOVE it and replace it with an approved alternative before returning.
 
       Return ONLY a valid JSON object in this EXACT schema:
       {
@@ -895,11 +900,13 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
 
   if (view === 'starterPreview' && starterPlan) {
     const menu = starterPlan.menu || {};
+    const h = starterPlan.headings || {};
+    const hv = (key, fallback) => (h[key] !== undefined ? h[key] : fallback);
     const sections = [
-      { key: 'breakfast', label: 'Breakfast', emoji: '🍳' },
-      { key: 'lunch', label: 'Lunch', emoji: '🥗' },
-      { key: 'dinner', label: 'Dinner', emoji: '🍛' },
-      { key: 'snacks', label: 'Snacks', emoji: '🍎' },
+      { key: 'breakfast', labelKey: 'breakfastLabel', label: hv('breakfastLabel', 'Breakfast'), emoji: '🍳' },
+      { key: 'lunch', labelKey: 'lunchLabel', label: hv('lunchLabel', 'Lunch'), emoji: '🥗' },
+      { key: 'dinner', labelKey: 'dinnerLabel', label: hv('dinnerLabel', 'Dinner'), emoji: '🍛' },
+      { key: 'snacks', labelKey: 'snacksLabel', label: hv('snacksLabel', 'Snacks'), emoji: '🍎' },
     ];
     return (
       <div className="min-h-screen bg-zinc-200 py-8 print:py-0 print:bg-white flex flex-col items-center">
@@ -937,8 +944,16 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
               <div className="bg-white p-4 rounded-3xl shadow-xl shadow-red-900/20 mb-8">
                 <img src={LOGO_URL} alt="Z.A Training Logo" className="w-20 h-20 object-contain" />
               </div>
-              <h3 className="text-red-500 font-bold tracking-[0.2em] uppercase mb-3 text-sm">Z.A Training — Getting Started</h3>
-              <h1 className="text-5xl font-extrabold leading-tight mb-4 text-white">{starterPlan.title || 'Your First Two Weeks'}</h1>
+              {isEditing ? (
+                <input value={hv('coverEyebrow', 'Z.A Training — Getting Started')} onChange={(e) => updateStarterHeading('coverEyebrow', e.target.value)} className="text-red-400 font-bold tracking-[0.2em] uppercase mb-3 text-sm bg-zinc-800 border border-zinc-600 rounded-md px-3 py-1 w-full outline-none focus:ring-2 focus:ring-red-500" />
+              ) : (
+                <h3 className="text-red-500 font-bold tracking-[0.2em] uppercase mb-3 text-sm">{hv('coverEyebrow', 'Z.A Training — Getting Started')}</h3>
+              )}
+              {isEditing ? (
+                <input value={starterPlan.title || ''} onChange={(e) => updateStarter('title', e.target.value)} className="text-4xl font-extrabold leading-tight mb-4 text-white bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2 w-full outline-none focus:ring-2 focus:ring-red-500" />
+              ) : (
+                <h1 className="text-5xl font-extrabold leading-tight mb-4 text-white">{starterPlan.title || 'Your First Two Weeks'}</h1>
+              )}
               <p className="text-xl text-zinc-400 font-light">Prepared for <span className="text-white font-semibold">{formData.clientName}</span></p>
             </header>
             {(starterPlan.welcome || isEditing) && (
@@ -952,7 +967,11 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
             )}
             {Array.isArray(starterPlan.fundamentals) && (
               <div className="relative z-10 mt-8">
-                <h2 className="text-2xl font-bold text-white mb-5 flex items-center"><Target className="w-6 h-6 mr-3 text-red-500" /> Your Fundamentals</h2>
+                <h2 className="text-2xl font-bold text-white mb-5 flex items-center"><Target className="w-6 h-6 mr-3 text-red-500 shrink-0" />
+                  {isEditing ? (
+                    <input value={hv('fundamentalsHeading', 'Your Fundamentals')} onChange={(e) => updateStarterHeading('fundamentalsHeading', e.target.value)} className="text-2xl font-bold text-white bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-1 w-full outline-none focus:ring-2 focus:ring-red-500" />
+                  ) : hv('fundamentalsHeading', 'Your Fundamentals')}
+                </h2>
                 <div className="space-y-3">
                   {starterPlan.fundamentals.map((f: string, i: number) => (
                     <div key={i} className="flex items-start bg-black/50 p-4 rounded-xl border border-zinc-800">
@@ -974,19 +993,34 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
             <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
               <img src={LOGO_URL} className="w-[500px] h-[500px] object-contain grayscale" alt="" />
             </div>
-            <header className="relative z-10 mb-8 border-b-2 border-zinc-100 pb-5 flex justify-between items-end">
-              <div>
-                <h4 className="text-red-700 font-bold tracking-widest uppercase text-sm mb-1">Mix & Match</h4>
-                <h2 className="text-4xl font-black text-black">Pick & Choose Meals</h2>
-                <p className="text-zinc-500 mt-1 font-medium">Choose any one from each section, each day. No rules — just rotate what you fancy.</p>
+            <header className="relative z-10 mb-8 border-b-2 border-zinc-100 pb-5 flex justify-between items-end gap-4">
+              <div className="flex-1">
+                {isEditing ? (
+                  <input value={hv('menuEyebrow', 'Mix & Match')} onChange={(e) => updateStarterHeading('menuEyebrow', e.target.value)} className="text-red-700 font-bold tracking-widest uppercase text-sm mb-1 border border-zinc-300 rounded-md px-2 py-1 w-full outline-none focus:ring-2 focus:ring-red-400" />
+                ) : (
+                  <h4 className="text-red-700 font-bold tracking-widest uppercase text-sm mb-1">{hv('menuEyebrow', 'Mix & Match')}</h4>
+                )}
+                {isEditing ? (
+                  <input value={hv('menuTitle', 'Pick & Choose Meals')} onChange={(e) => updateStarterHeading('menuTitle', e.target.value)} className="text-3xl font-black text-black border border-zinc-300 rounded-lg px-2 py-1 w-full outline-none focus:ring-2 focus:ring-red-400 mb-1" />
+                ) : (
+                  <h2 className="text-4xl font-black text-black">{hv('menuTitle', 'Pick & Choose Meals')}</h2>
+                )}
+                {isEditing ? (
+                  <textarea value={hv('menuSubtitle', 'Choose any one from each section, each day. No rules — just rotate what you fancy.')} onChange={(e) => updateStarterHeading('menuSubtitle', e.target.value)} rows={2} className="text-zinc-500 font-medium border border-zinc-300 rounded-md px-2 py-1 w-full outline-none focus:ring-2 focus:ring-red-400 resize-y" />
+                ) : (
+                  <p className="text-zinc-500 mt-1 font-medium">{hv('menuSubtitle', 'Choose any one from each section, each day. No rules — just rotate what you fancy.')}</p>
+                )}
               </div>
-              <img src={LOGO_URL} alt="ZA" className="w-10 h-10 object-contain opacity-80" />
+              <img src={LOGO_URL} alt="ZA" className="w-10 h-10 object-contain opacity-80 shrink-0" />
             </header>
             <div className="relative z-10 grid grid-cols-2 gap-6">
               {sections.map((s) => (
                 <div key={s.key} className="bg-zinc-50 border border-zinc-200 rounded-2xl p-6">
                   <h3 className="font-black text-black uppercase tracking-wider text-sm mb-4 flex items-center">
-                    <span className="mr-2 text-lg">{s.emoji}</span> {s.label}
+                    <span className="mr-2 text-lg shrink-0">{s.emoji}</span>
+                    {isEditing ? (
+                      <input value={s.label} onChange={(e) => updateStarterHeading(s.labelKey, e.target.value)} className="font-black text-black uppercase tracking-wider text-sm border border-zinc-300 rounded-md px-2 py-0.5 w-full outline-none focus:ring-2 focus:ring-red-400" />
+                    ) : s.label}
                   </h3>
                   <ul className="space-y-3">
                     {(Array.isArray(menu[s.key]) ? menu[s.key] : []).map((opt: string, i: number) => (
@@ -1010,31 +1044,44 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
             <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
               <img src={LOGO_URL} className="w-[500px] h-[500px] object-contain grayscale" alt="" />
             </div>
-            <header className="relative z-10 mb-8 border-b-2 border-zinc-200 pb-5 flex justify-between items-end">
-              <div>
-                <h4 className="text-red-700 font-bold tracking-widest uppercase text-sm mb-1">Easy Wins</h4>
-                <h2 className="text-4xl font-black text-black">Smarter Swaps</h2>
-                <p className="text-zinc-500 mt-1 font-medium">Small switches that make a big difference.</p>
+            <header className="relative z-10 mb-8 border-b-2 border-zinc-200 pb-5 flex justify-between items-end gap-4">
+              <div className="flex-1">
+                {isEditing ? (
+                  <input value={hv('swapsEyebrow', 'Easy Wins')} onChange={(e) => updateStarterHeading('swapsEyebrow', e.target.value)} className="text-red-700 font-bold tracking-widest uppercase text-sm mb-1 border border-zinc-300 rounded-md px-2 py-1 w-full outline-none focus:ring-2 focus:ring-red-400" />
+                ) : (
+                  <h4 className="text-red-700 font-bold tracking-widest uppercase text-sm mb-1">{hv('swapsEyebrow', 'Easy Wins')}</h4>
+                )}
+                {isEditing ? (
+                  <input value={hv('swapsTitle', 'Smarter Swaps')} onChange={(e) => updateStarterHeading('swapsTitle', e.target.value)} className="text-3xl font-black text-black border border-zinc-300 rounded-lg px-2 py-1 w-full outline-none focus:ring-2 focus:ring-red-400 mb-1" />
+                ) : (
+                  <h2 className="text-4xl font-black text-black">{hv('swapsTitle', 'Smarter Swaps')}</h2>
+                )}
+                {isEditing ? (
+                  <textarea value={hv('swapsSubtitle', 'Small switches that make a big difference.')} onChange={(e) => updateStarterHeading('swapsSubtitle', e.target.value)} rows={2} className="text-zinc-500 font-medium border border-zinc-300 rounded-md px-2 py-1 w-full outline-none focus:ring-2 focus:ring-red-400 resize-y" />
+                ) : (
+                  <p className="text-zinc-500 mt-1 font-medium">{hv('swapsSubtitle', 'Small switches that make a big difference.')}</p>
+                )}
               </div>
-              <img src={LOGO_URL} alt="ZA" className="w-10 h-10 object-contain opacity-80" />
+              <img src={LOGO_URL} alt="ZA" className="w-10 h-10 object-contain opacity-80 shrink-0" />
             </header>
             <div className="relative z-10 space-y-3">
               {(Array.isArray(starterPlan.swaps) ? starterPlan.swaps : []).map((sw: any, i: number) => (
-                <div key={i} className="bg-white border border-zinc-200 rounded-xl p-5 flex items-center gap-4 shadow-sm">
+                <div key={i} className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
                   {isEditing ? (
-                    <>
-                      <input value={sw.from || ''} onChange={(e) => updateStarterSwap(i, 'from', e.target.value)} className="text-zinc-500 font-semibold border border-zinc-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400 w-1/4" />
-                      <span className="text-red-600 font-black shrink-0">→</span>
-                      <input value={sw.to || ''} onChange={(e) => updateStarterSwap(i, 'to', e.target.value)} className="text-black font-bold border border-zinc-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400 w-1/4" />
-                      <input value={sw.why || ''} onChange={(e) => updateStarterSwap(i, 'why', e.target.value)} className="text-zinc-500 text-sm border border-zinc-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400 flex-1" />
-                    </>
+                    <div className="flex flex-col gap-2">
+                      <input value={sw.from || ''} onChange={(e) => updateStarterSwap(i, 'from', e.target.value)} placeholder="Swap this..." className="text-zinc-500 font-semibold border border-zinc-300 rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-red-400 w-full" />
+                      <input value={sw.to || ''} onChange={(e) => updateStarterSwap(i, 'to', e.target.value)} placeholder="...for this" className="text-black font-bold border border-zinc-300 rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-red-400 w-full" />
+                      <input value={sw.why || ''} onChange={(e) => updateStarterSwap(i, 'why', e.target.value)} placeholder="Why (short reason)" className="text-zinc-500 text-sm border border-zinc-300 rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-red-400 w-full" />
+                    </div>
                   ) : (
-                    <>
-                      <span className="text-zinc-400 font-semibold line-through shrink-0">{sw.from}</span>
-                      <span className="text-red-600 font-black shrink-0">→</span>
-                      <span className="text-black font-bold shrink-0">{sw.to}</span>
-                      {sw.why && <span className="text-zinc-500 text-sm ml-auto text-right">{sw.why}</span>}
-                    </>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="text-zinc-400 font-semibold line-through">{sw.from}</span>
+                        <span className="text-red-600 font-black">→</span>
+                        <span className="text-black font-bold">{sw.to}</span>
+                      </div>
+                      {sw.why && <p className="text-zinc-500 text-sm mt-1.5">{sw.why}</p>}
+                    </div>
                   )}
                 </div>
               ))}
@@ -1043,7 +1090,11 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
             {/* Coaching Notes (toggleable) */}
             {showStarterNotes && (isEditing || starterNotes) && (
               <div className="relative z-10 mt-8 bg-amber-50 border-2 border-amber-200 rounded-2xl p-6">
-                <h3 className="font-black text-amber-700 uppercase tracking-wider text-sm mb-3 flex items-center"><span className="mr-2 text-lg">📝</span> Coach's Notes</h3>
+                <h3 className="font-black text-amber-700 uppercase tracking-wider text-sm mb-3 flex items-center"><span className="mr-2 text-lg shrink-0">📝</span>
+                  {isEditing ? (
+                    <input value={hv('notesHeading', "Coach's Notes")} onChange={(e) => updateStarterHeading('notesHeading', e.target.value)} className="font-black text-amber-700 uppercase tracking-wider text-sm border border-amber-300 rounded-md px-2 py-0.5 w-full outline-none focus:ring-2 focus:ring-amber-400" />
+                  ) : hv('notesHeading', "Coach's Notes")}
+                </h3>
                 {isEditing ? (
                   <textarea value={starterNotes} onChange={(e) => setStarterNotes(e.target.value)} rows={5} placeholder="Add any personal notes for this client here..." className="w-full bg-white text-zinc-800 leading-relaxed border border-amber-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-amber-400 resize-y" />
                 ) : (
