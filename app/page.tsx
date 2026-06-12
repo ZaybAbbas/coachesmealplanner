@@ -86,6 +86,15 @@ export default function App() {
       return next;
     });
   };
+  const updateGenField = (field, value) => {
+    setGeneratedPlan(prev => { const n = structuredClone(prev); n[field] = value; return n; });
+  };
+  const updateGenArray = (field, i, value) => {
+    setGeneratedPlan(prev => { const n = structuredClone(prev); n[field][i] = value; return n; });
+  };
+  const updateShoppingItem = (category, i, value) => {
+    setGeneratedPlan(prev => { const n = structuredClone(prev); n.shoppingList[category][i] = value; return n; });
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -323,7 +332,8 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
           - "Higher Carb": more starchy carbs (larger rice/oats/potato portions, add fruit), leaner proteins and less added fat. Carbs roughly 50-55% of calories. Protein stays at the standard 1.8-2.2g/kg.
           - MEDICAL OVERRIDE: Medical needs ALWAYS win over carb preference. If the client has PCOS/Insulin Resistance, "Higher Carb" must use LOW-GI WHOLE-FOOD carbs only (oats, sweet potato, lentils, quinoa) — never refined carbs or large white rice portions. Low-GI/whole-food rules are never broken to satisfy a carb preference.
       18. SHOPPING LIST RULE: Maximum 4 items per category. Only include what is genuinely needed. If cooking for Family or Couple, add approximate weekly quantity for bulk items e.g. "Chicken mince (~1.2kg for the week)".
-      19. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day — no excuses." For family cooking: "Measure your portions separately before serving the family."
+      19. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day." For family cooking: "Measure your portions separately before serving the family."
+      19b. NO CALORIE NUMBERS IN NARRATIVE SECTIONS: Do NOT put any specific calorie figure (e.g. "1600 kcal", "stick to 1605 calories", "a 500 kcal deficit") in the "tips", "summary", or "quickWins". The coach may choose to HIDE the targets and daily totals, and these sections must still read perfectly with no leftover calorie references. Speak generally instead — "stay consistent with your portions", "hit your protein target", "trust the plan". Specific calorie numbers belong ONLY in the targets section, dailyTotals, and per-meal metrics.
 
       ⛔ FINAL CHECK BEFORE YOU RESPOND: Re-read every single meal, snack, side and ingredient you have written. If ANY banned food appears (Pork, Bacon, Ham, Alcohol, Turkey, Rotisserie Chicken or any pre-cooked roast chicken, Tempeh, Tofu, Medallions/fancy cuts, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal), REMOVE it and replace it with an approved alternative before returning your answer. Do not return the plan until it is 100% clean.
 
@@ -590,7 +600,11 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
                 <img src={LOGO_URL} alt="Z.A Training Logo" className="w-24 h-24 object-contain" />
               </div>
               <h3 className="text-red-500 font-bold tracking-[0.2em] uppercase mb-3 text-sm">Z.A Training & Education</h3>
-              <h1 className="text-5xl font-extrabold leading-tight mb-4 text-white">{generatedPlan?.title || "Custom Nutrition Protocol"}</h1>
+              {isEditing ? (
+                <input value={generatedPlan?.title || ''} onChange={(e) => updateGenField('title', e.target.value)} className="text-4xl font-extrabold leading-tight mb-4 text-white bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2 w-full outline-none focus:ring-2 focus:ring-red-500" />
+              ) : (
+                <h1 className="text-5xl font-extrabold leading-tight mb-4 text-white">{generatedPlan?.title || "Custom Nutrition Protocol"}</h1>
+              )}
               <p className="text-2xl text-zinc-400 font-light">Prepared for <span className="text-white font-semibold">{formData.clientName}</span></p>
             </header>
 
@@ -662,7 +676,11 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
                   {generatedPlan.quickWins.map((win, idx) => (
                     <li key={idx} className="flex items-start">
                       <span className="text-white font-black text-lg mr-3 shrink-0">{idx + 1}.</span>
-                      <p className="text-red-100 font-medium leading-snug">{win}</p>
+                      {isEditing ? (
+                        <textarea value={win || ''} onChange={(e) => updateGenArray('quickWins', idx, e.target.value)} rows={2} className="w-full bg-red-800 text-white font-medium leading-snug border border-red-400 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-white/50 resize-y" />
+                      ) : (
+                        <p className="text-red-100 font-medium leading-snug">{win}</p>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -830,7 +848,11 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
                     {(Array.isArray(items) ? items : []).map((item, idx) => (
                       <li key={idx} className="flex items-start text-zinc-700 text-sm font-medium">
                         <div className="w-1.5 h-1.5 bg-red-600 rounded-full mr-3 mt-1.5 shrink-0"></div>
-                        {item}
+                        {isEditing ? (
+                          <input value={item || ''} onChange={(e) => updateShoppingItem(category, idx, e.target.value)} className="w-full text-zinc-700 text-sm font-medium border border-zinc-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400" />
+                        ) : (
+                          item
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -847,13 +869,21 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
                 {(Array.isArray(generatedPlan?.tips) ? generatedPlan.tips : []).map((tip, idx) => (
                   <li key={idx} className="flex items-start">
                     <CheckCircle2 className="w-6 h-6 mr-4 text-red-600 shrink-0 mt-0.5" />
-                    <p className="text-zinc-300 leading-relaxed text-lg">{tip}</p>
+                    {isEditing ? (
+                      <textarea value={tip || ''} onChange={(e) => updateGenArray('tips', idx, e.target.value)} rows={2} className="w-full bg-zinc-800 text-zinc-200 leading-relaxed text-lg border border-zinc-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 resize-y" />
+                    ) : (
+                      <p className="text-zinc-300 leading-relaxed text-lg">{tip}</p>
+                    )}
                   </li>
                 ))}
               </ul>
               <div className="bg-zinc-900 p-8 rounded-2xl border border-red-900/50">
                 <p className="text-red-500 font-bold uppercase tracking-widest text-xs mb-3">The One Thing</p>
-                <p className="text-2xl font-medium text-white leading-tight">{generatedPlan?.summary || "Focus on your daily targets and consistency."}</p>
+                {isEditing ? (
+                  <textarea value={generatedPlan?.summary || ''} onChange={(e) => updateGenField('summary', e.target.value)} rows={3} className="w-full bg-zinc-800 text-white text-2xl font-medium leading-tight border border-zinc-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 resize-y" />
+                ) : (
+                  <p className="text-2xl font-medium text-white leading-tight">{generatedPlan?.summary || "Focus on your daily targets and consistency."}</p>
+                )}
               </div>
             </div>
           </div>
