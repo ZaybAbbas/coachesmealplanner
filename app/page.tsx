@@ -46,6 +46,22 @@ export default function App() {
   const [isEditing, setIsEditing] = useState(false);
   const [planMode, setPlanMode] = useState('full'); // 'full' or 'starter'
   const [starterPlan, setStarterPlan] = useState<any>(null);
+  const [starterNotes, setStarterNotes] = useState('');
+  const [showStarterNotes, setShowStarterNotes] = useState(false);
+
+  // --- Starter plan edit helpers ---
+  const updateStarter = (field, value) => {
+    setStarterPlan(prev => { const n = structuredClone(prev); n[field] = value; return n; });
+  };
+  const updateStarterFundamental = (i, value) => {
+    setStarterPlan(prev => { const n = structuredClone(prev); n.fundamentals[i] = value; return n; });
+  };
+  const updateStarterMenu = (section, i, value) => {
+    setStarterPlan(prev => { const n = structuredClone(prev); n.menu[section][i] = value; return n; });
+  };
+  const updateStarterSwap = (i, key, value) => {
+    setStarterPlan(prev => { const n = structuredClone(prev); n.swaps[i][key] = value; return n; });
+  };
 
   // --- Manual edit helpers (let the coach tweak the plan before sending) ---
   const updateMeal = (weekIdx, dayIdx, mealIdx, field, value) => {
@@ -480,6 +496,7 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
       }
       const parsedData = JSON.parse(cleanText);
       setStarterPlan(parsedData);
+      setIsEditing(false);
       setStreamedChars(0);
       setView('starterPreview');
     } catch (err: any) {
@@ -853,14 +870,29 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
     return (
       <div className="min-h-screen bg-zinc-200 py-8 print:py-0 print:bg-white flex flex-col items-center">
         {/* Controls */}
-        <div className="max-w-[210mm] w-full flex justify-between items-center mb-6 print:hidden px-4 md:px-0">
+        <div className="max-w-[210mm] w-full flex flex-wrap justify-between items-center gap-2 mb-6 print:hidden px-4 md:px-0">
           <button onClick={() => setView('dashboard')} className="flex items-center text-zinc-600 hover:text-black bg-white px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors">
             <ArrowLeft className="w-4 h-4 mr-2" /> Edit Details
           </button>
-          <button onClick={() => window.print()} className="flex items-center bg-red-700 hover:bg-red-800 text-white px-6 py-2 rounded-lg shadow-md font-bold transition-all">
+          <button onClick={() => setShowStarterNotes(!showStarterNotes)} className={`flex items-center px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors border ${showStarterNotes ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500' : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-50'}`}>
+            {showStarterNotes ? '📝 Notes: On' : '📝 Notes: Off'}
+          </button>
+          <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors border ${isEditing ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-50'}`}>
+            {isEditing ? '✓ Done Editing' : '✏️ Edit Plan'}
+          </button>
+          <button onClick={() => { setIsEditing(false); setTimeout(() => window.print(), 50); }} className="flex items-center bg-red-700 hover:bg-red-800 text-white px-6 py-2 rounded-lg shadow-md font-bold transition-all">
             <Download className="w-4 h-4 mr-2" /> Export to PDF
           </button>
         </div>
+
+        {isEditing && (
+          <div className="max-w-[210mm] w-full mb-6 print:hidden px-4 md:px-0">
+            <div className="bg-green-50 border border-green-300 rounded-xl px-5 py-3 text-green-800 text-sm font-medium flex items-center gap-2">
+              <span className="text-lg">✏️</span>
+              <span><strong>Edit mode is ON.</strong> Click any text — the welcome note, fundamentals, meal options, swaps — to change it. Turn on "Notes" to add your own coaching notes. Tap "Done Editing" when finished.</span>
+            </div>
+          </div>
+        )}
 
         <div className="document-container w-full max-w-[210mm] bg-white shadow-2xl print:shadow-none text-zinc-900 relative">
 
@@ -875,9 +907,13 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
               <h1 className="text-5xl font-extrabold leading-tight mb-4 text-white">{starterPlan.title || 'Your First Two Weeks'}</h1>
               <p className="text-xl text-zinc-400 font-light">Prepared for <span className="text-white font-semibold">{formData.clientName}</span></p>
             </header>
-            {starterPlan.welcome && (
+            {(starterPlan.welcome || isEditing) && (
               <div className="relative z-10 mt-8 bg-zinc-900/60 p-6 rounded-2xl border border-red-900/40">
-                <p className="text-zinc-200 leading-relaxed italic">{starterPlan.welcome}</p>
+                {isEditing ? (
+                  <textarea value={starterPlan.welcome || ''} onChange={(e) => updateStarter('welcome', e.target.value)} rows={3} className="w-full bg-zinc-800 text-zinc-100 leading-relaxed italic border border-zinc-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 resize-y" />
+                ) : (
+                  <p className="text-zinc-200 leading-relaxed italic">{starterPlan.welcome}</p>
+                )}
               </div>
             )}
             {Array.isArray(starterPlan.fundamentals) && (
@@ -887,7 +923,11 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
                   {starterPlan.fundamentals.map((f: string, i: number) => (
                     <div key={i} className="flex items-start bg-black/50 p-4 rounded-xl border border-zinc-800">
                       <span className="text-red-500 font-black text-lg mr-4 shrink-0">{i + 1}</span>
-                      <p className="text-zinc-200 font-medium leading-snug">{f}</p>
+                      {isEditing ? (
+                        <textarea value={f || ''} onChange={(e) => updateStarterFundamental(i, e.target.value)} rows={2} className="w-full bg-zinc-800 text-zinc-100 font-medium leading-snug border border-zinc-600 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-red-500 resize-y" />
+                      ) : (
+                        <p className="text-zinc-200 font-medium leading-snug">{f}</p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -918,7 +958,11 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
                     {(Array.isArray(menu[s.key]) ? menu[s.key] : []).map((opt: string, i: number) => (
                       <li key={i} className="flex items-start text-zinc-700 text-sm font-medium">
                         <div className="w-1.5 h-1.5 bg-red-600 rounded-full mr-3 mt-1.5 shrink-0"></div>
-                        {opt}
+                        {isEditing ? (
+                          <textarea value={opt || ''} onChange={(e) => updateStarterMenu(s.key, i, e.target.value)} rows={2} className="w-full text-zinc-700 text-sm font-medium border border-zinc-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400 resize-y bg-white" />
+                        ) : (
+                          opt
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -943,16 +987,44 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
             <div className="relative z-10 space-y-3">
               {(Array.isArray(starterPlan.swaps) ? starterPlan.swaps : []).map((sw: any, i: number) => (
                 <div key={i} className="bg-white border border-zinc-200 rounded-xl p-5 flex items-center gap-4 shadow-sm">
-                  <span className="text-zinc-400 font-semibold line-through shrink-0">{sw.from}</span>
-                  <span className="text-red-600 font-black shrink-0">→</span>
-                  <span className="text-black font-bold shrink-0">{sw.to}</span>
-                  {sw.why && <span className="text-zinc-500 text-sm ml-auto text-right">{sw.why}</span>}
+                  {isEditing ? (
+                    <>
+                      <input value={sw.from || ''} onChange={(e) => updateStarterSwap(i, 'from', e.target.value)} className="text-zinc-500 font-semibold border border-zinc-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400 w-1/4" />
+                      <span className="text-red-600 font-black shrink-0">→</span>
+                      <input value={sw.to || ''} onChange={(e) => updateStarterSwap(i, 'to', e.target.value)} className="text-black font-bold border border-zinc-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400 w-1/4" />
+                      <input value={sw.why || ''} onChange={(e) => updateStarterSwap(i, 'why', e.target.value)} className="text-zinc-500 text-sm border border-zinc-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400 flex-1" />
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-zinc-400 font-semibold line-through shrink-0">{sw.from}</span>
+                      <span className="text-red-600 font-black shrink-0">→</span>
+                      <span className="text-black font-bold shrink-0">{sw.to}</span>
+                      {sw.why && <span className="text-zinc-500 text-sm ml-auto text-right">{sw.why}</span>}
+                    </>
+                  )}
                 </div>
               ))}
             </div>
-            {starterPlan.closingTip && (
+
+            {/* Coaching Notes (toggleable) */}
+            {showStarterNotes && (isEditing || starterNotes) && (
+              <div className="relative z-10 mt-8 bg-amber-50 border-2 border-amber-200 rounded-2xl p-6">
+                <h3 className="font-black text-amber-700 uppercase tracking-wider text-sm mb-3 flex items-center"><span className="mr-2 text-lg">📝</span> Coach's Notes</h3>
+                {isEditing ? (
+                  <textarea value={starterNotes} onChange={(e) => setStarterNotes(e.target.value)} rows={5} placeholder="Add any personal notes for this client here..." className="w-full bg-white text-zinc-800 leading-relaxed border border-amber-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-amber-400 resize-y" />
+                ) : (
+                  <p className="text-zinc-800 leading-relaxed whitespace-pre-wrap">{starterNotes}</p>
+                )}
+              </div>
+            )}
+
+            {(starterPlan.closingTip || isEditing) && (
               <div className="relative z-10 mt-10 bg-red-700 p-8 rounded-3xl shadow-2xl">
-                <p className="text-white font-bold text-lg leading-snug">{starterPlan.closingTip}</p>
+                {isEditing ? (
+                  <textarea value={starterPlan.closingTip || ''} onChange={(e) => updateStarter('closingTip', e.target.value)} rows={2} className="w-full bg-red-800 text-white font-bold text-lg leading-snug border border-red-500 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-white/50 resize-y" />
+                ) : (
+                  <p className="text-white font-bold text-lg leading-snug">{starterPlan.closingTip}</p>
+                )}
               </div>
             )}
           </div>
