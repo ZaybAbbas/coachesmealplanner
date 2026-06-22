@@ -187,13 +187,9 @@ export default function App() {
   };
 
   const isFormValid = () => {
-    if (!formData.clientName?.trim()) return false;
-    const w = parseFloat(formData.weight);
-    const h = parseFloat(formData.height);
-    const a = parseFloat(formData.age);
-    if (isNaN(w) || w <= 0) return false;
-    if (isNaN(h) || h <= 0) return false;
-    if (isNaN(a) || a <= 0) return false;
+    // Nothing is mandatory — the coach can generate a quick plan with as little
+    // or as much info as they like. Missing height/weight/age is handled in the
+    // prompt (Rule 1) by skipping the TDEE maths and using a sensible default.
     return true;
   };
 
@@ -208,10 +204,10 @@ export default function App() {
       Your job is to generate a fully personalised nutrition protocol based on the client details provided below.
 
       CLIENT DETAILS:
-      - Name: ${formData.clientName}
-      - Age: ${formData.age}
-      - Height: ${formData.height} cm
-      - Weight: ${formData.weight} kg
+      - Name: ${formData.clientName || 'Client'}
+      - Age: ${formData.age || 'Not provided'}
+      - Height: ${formData.height ? formData.height + ' cm' : 'Not provided'}
+      - Weight: ${formData.weight ? formData.weight + ' kg' : 'Not provided'}
       - Primary Goal: ${formData.goal}
       - Goal timeframe: ${formData.timeframe}
       - Activity level: ${formData.activityLevel}
@@ -239,6 +235,8 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
       🔒 STRICT FOOD LIST MODE IS ON — READ CAREFULLY: The client has given their OWN food list: "${formData.availableFoods}". You must build EVERY meal using ONLY foods from that exact list. Do NOT add ANY food that is not on it — no almonds, no smoked salmon, no yoghurt, no fruit, no nuts, nothing extra. The Z.A master food list and signature meals/snacks in Rule 10 are SUSPENDED and must be completely ignored. The only things you may add are basic seasonings (salt, pepper, spices, onion/garlic/tomato for cooking, oil, water). See Rule 16 for the one tightly-limited protein fallback. When in doubt, leave it out.
 ` : ''}
       1. CALCULATE TDEE USING THE MIFFLIN-ST JEOR FORMULA (all clients are women):
+          IF age, height OR weight is "Not provided": DO NOT attempt the calculation. Set TDEE to "N/A" and set a sensible default Daily Calorie Target for a busy South Asian woman based on the goal — fat loss ≈ 1500 kcal, maintenance ≈ 1800 kcal, muscle building ≈ 1900 kcal. Set Protein Target to a sensible "100-120g" and Fibre to "25-30g". Do NOT mention anywhere that any information was missing. Then skip the rest of this rule.
+          IF all three are provided:
           Step 1 — BMR = (10 × weight in kg) + (6.25 × height in cm) − (5 × age) − 161
           Step 2 — TDEE = BMR × activity multiplier:
               Sedentary = 1.2 | Lightly active = 1.375 | Moderately active = 1.55 | Very active = 1.725
@@ -610,7 +608,7 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
               ) : (
                 <h1 className="text-5xl font-extrabold leading-tight mb-4 text-white">{generatedPlan?.title || "Custom Nutrition Protocol"}</h1>
               )}
-              <p className="text-2xl text-zinc-400 font-light">Prepared for <span className="text-white font-semibold">{formData.clientName}</span></p>
+              <p className="text-2xl text-zinc-400 font-light">Prepared for <span className="text-white font-semibold">{formData.clientName || 'Client'}</span></p>
             </header>
 
             {showTargets && (
@@ -954,7 +952,7 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
               ) : (
                 <h1 className="text-5xl font-extrabold leading-tight mb-4 text-white">{starterPlan.title || 'Your First Two Weeks'}</h1>
               )}
-              <p className="text-xl text-zinc-400 font-light">Prepared for <span className="text-white font-semibold">{formData.clientName}</span></p>
+              <p className="text-xl text-zinc-400 font-light">Prepared for <span className="text-white font-semibold">{formData.clientName || 'Client'}</span></p>
             </header>
             {(starterPlan.welcome || isEditing) && (
               <div className="relative z-10 mt-8 bg-zinc-900/60 p-6 rounded-2xl border border-red-900/40">
