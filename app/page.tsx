@@ -21,6 +21,7 @@ export default function App() {
     goal: 'Fat loss',
     timeframe: 'Lose 5kg over 12 weeks',
     activityLevel: 'Lightly active',
+    manualCalories: '',
     hormonalStatus: 'Regular cycle',
     medicalFlags: 'None',
     durationWeeks: 1,
@@ -205,6 +206,7 @@ export default function App() {
 
       CLIENT DETAILS:
       - Name: ${formData.clientName || 'Client'}
+      - Manual Calorie Target: ${formData.manualCalories ? formData.manualCalories + ' kcal (use this exact daily calorie target)' : 'Not provided'}
       - Age: ${formData.age || 'Not provided'}
       - Height: ${formData.height ? formData.height + ' cm' : 'Not provided'}
       - Weight: ${formData.weight ? formData.weight + ' kg' : 'Not provided'}
@@ -235,7 +237,8 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
       🔒 STRICT FOOD LIST MODE IS ON — READ CAREFULLY: The client has given their OWN food list: "${formData.availableFoods}". You must build EVERY meal using ONLY foods from that exact list. Do NOT add ANY food that is not on it — no almonds, no smoked salmon, no yoghurt, no fruit, no nuts, nothing extra. The Z.A master food list and signature meals/snacks in Rule 10 are SUSPENDED and must be completely ignored. The only things you may add are basic seasonings (salt, pepper, spices, onion/garlic/tomato for cooking, oil, water). See Rule 16 for the one tightly-limited protein fallback. When in doubt, leave it out.
 ` : ''}
       1. CALCULATE TDEE USING THE MIFFLIN-ST JEOR FORMULA (all clients are women):
-          IF age, height OR weight is "Not provided": DO NOT attempt the calculation. Set TDEE to "N/A" and set a sensible default Daily Calorie Target for a busy South Asian woman based on the goal — fat loss ≈ 1500 kcal, maintenance ≈ 1800 kcal, muscle building ≈ 1900 kcal. Set Protein Target to a sensible "100-120g" and Fibre to "25-30g". Do NOT mention anywhere that any information was missing. Then skip the rest of this rule.
+          IF a "Manual Calorie Target" is provided: use that EXACT number as the Daily Calorie Target. Set TDEE to "N/A". Do NOT apply any deficit from Rule 17 — the manual number IS the final target. Set Protein Target to a sensible "100-120g" and Fibre to "25-30g". Do NOT mention that a manual target was used. Then skip the rest of this rule and ignore Rule 17's deficit maths.
+          IF age, height OR weight is "Not provided" (and no manual target): DO NOT attempt the calculation. Set TDEE to "N/A" and set a sensible default Daily Calorie Target for a busy South Asian woman based on the goal — fat loss ≈ 1500 kcal, maintenance ≈ 1800 kcal, muscle building ≈ 1900 kcal. Set Protein Target to a sensible "100-120g" and Fibre to "25-30g". Do NOT mention anywhere that any information was missing. Then skip the rest of this rule.
           IF all three are provided:
           Step 1 — BMR = (10 × weight in kg) + (6.25 × height in cm) − (5 × age) − 161
           Step 2 — TDEE = BMR × activity multiplier:
@@ -1206,6 +1209,11 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
                 <select name="activityLevel" value={formData.activityLevel} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none bg-white transition-all text-black font-medium cursor-pointer">
                   <option>Sedentary</option><option>Lightly active</option><option>Moderately active</option><option>Very active</option>
                 </select>
+              </div>
+              <div className="md:col-span-4">
+                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Manual Calorie Target (optional)</label>
+                <input type="number" name="manualCalories" min="1" step="any" value={formData.manualCalories} onChange={handleInputChange} placeholder="e.g. 1500 — type a number here to skip the metrics above" className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none transition-all text-black font-medium" />
+                <p className="text-xs text-zinc-400 mt-2">Leave blank to calculate from the metrics above. Enter a number and the plan is built around exactly that calorie target.</p>
               </div>
             </div>
           </div>
