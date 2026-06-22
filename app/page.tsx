@@ -198,15 +198,40 @@ export default function App() {
     setView('generating');
     setError('');
     
-    const aiWeeks = 1; 
-    
+    const aiWeeks = 1;
+
+    // If a manual calorie target is given, work out a concrete per-meal kcal budget
+    // in code and hand it to the AI as exact numbers to hit. Asking the AI to total a
+    // whole day itself is unreliable — giving it a per-meal number to match is far better.
+    const manualCal = parseInt(formData.manualCalories, 10);
+    let mealBudgetText = '';
+    if (manualCal && manualCal > 0) {
+      if (formData.religiousFasting === 'Intermittent Fasting') {
+        const lunch = Math.round(manualCal * 0.42);
+        const dinner = Math.round(manualCal * 0.46);
+        const snack = manualCal - lunch - dinner;
+        mealBudgetText = `Lunch ≈ ${lunch} kcal | Dinner ≈ ${dinner} kcal | Optional Snack ≈ ${snack} kcal (these must add up to ${manualCal} kcal for the day)`;
+      } else if (formData.religiousFasting === 'Ramadan') {
+        const suhoor = Math.round(manualCal * 0.35);
+        const iftar = Math.round(manualCal * 0.40);
+        const evening = manualCal - suhoor - iftar;
+        mealBudgetText = `Suhoor ≈ ${suhoor} kcal | Iftar ≈ ${iftar} kcal | Late Evening Meal ≈ ${evening} kcal (these must add up to ${manualCal} kcal for the day)`;
+      } else {
+        const bfast = Math.round(manualCal * 0.30);
+        const lunch = Math.round(manualCal * 0.35);
+        const dinner = manualCal - bfast - lunch;
+        mealBudgetText = `Breakfast ≈ ${bfast} kcal | Lunch ≈ ${lunch} kcal | Dinner ≈ ${dinner} kcal (these must add up to ${manualCal} kcal for the day)`;
+      }
+    }
+
     const prompt = `
       You are an expert nutrition coach specialising in evidence-based meal planning for busy South Asian women. 
       Your job is to generate a fully personalised nutrition protocol based on the client details provided below.
 
       CLIENT DETAILS:
       - Name: ${formData.clientName || 'Client'}
-      - Manual Calorie Target: ${formData.manualCalories ? formData.manualCalories + ' kcal (use this exact daily calorie target)' : 'Not provided'}
+      - Manual Calorie Target: ${formData.manualCalories ? formData.manualCalories + ' kcal (use this exact daily calorie target)' : 'Not provided'}${mealBudgetText ? `
+      - PER-MEAL CALORIE BUDGET (you MUST hit these — portion every meal to land on its number): ${mealBudgetText}` : ''}
       - Age: ${formData.age || 'Not provided'}
       - Height: ${formData.height ? formData.height + ' cm' : 'Not provided'}
       - Weight: ${formData.weight ? formData.weight + ' kg' : 'Not provided'}
@@ -338,9 +363,15 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
       18. SHOPPING LIST RULE: Maximum 4 items per category. Only include what is genuinely needed. If cooking for Family or Couple, add approximate weekly quantity for bulk items e.g. "Chicken mince (~1.2kg for the week)".
       19. QUICK WINS: Generate exactly 3 short, punchy, personalised non-negotiables for this specific client. Written directly to them. Based on their hormonal status, medical flags, goal, and lifestyle. Use the Z.A Training tone — direct, no fluff. Each one should be one sentence max. Examples for PCOS: "Never eat a carb alone — always pair it with protein or fat." For menopausal: "Calcium every single day." For family cooking: "Measure your portions separately before serving the family."
       19b. NO CALORIE NUMBERS IN NARRATIVE SECTIONS: Do NOT put any specific calorie figure (e.g. "1600 kcal", "stick to 1605 calories", "a 500 kcal deficit") in the "tips", "summary", or "quickWins". The coach may choose to HIDE the targets and daily totals, and these sections must still read perfectly with no leftover calorie references. Speak generally instead — "stay consistent with your portions", "hit your protein target", "trust the plan". Specific calorie numbers belong ONLY in the targets section, dailyTotals, and per-meal metrics.
-      20. ⛔ PORTION SIZING MUST HIT THE DAILY CALORIE TARGET — CRITICAL MATH CHECK: Setting the "Daily Calorie Target" number in Rule 1/17 is NOT enough — every day's actual meals must be portioned (grams, tablespoons, cups) so their calories genuinely add up to that target. Do NOT default to generic "standard" portion sizes — scale every meal's portions up or down until the maths works. For EVERY single day, after writing all the meals: ADD UP the kcal figure from every meal/snack card for that day. If the true sum is more than ~50 kcal away from the Daily Calorie Target, you MUST go back and resize portions (more rice/protein/carbs/healthy fat to raise it, less to lower it) until the sum lands within ~50 kcal of the target. The "dailyTotals" calories figure you write MUST be the real sum of that day's meals — never write a totals number that doesn't match what you actually wrote in the meals above it. This applies to every day in every week, not just day one.
+      20. ⛔ PORTION SIZING MUST HIT THE DAILY CALORIE TARGET — THIS IS THE MOST IMPORTANT RULE: A plan that does not add up to the Daily Calorie Target is a FAILED plan. Setting the target number is NOT enough — every meal must be portioned (more grams/tablespoons/cups of rice, protein, carbs and healthy fat) so the day genuinely reaches that number. Your single biggest mistake is making "normal looking" diet-sized meals (~400-500 kcal each) that fall hundreds of calories short. DO NOT DO THIS. If the target is high, the meals MUST be bigger — larger portions, an extra carb or fat source, a bigger protein serving.
+          HOW TO HIT THE NUMBER (do this every day):
+          a. FIRST, give each meal its own calorie budget that sums to the Daily Calorie Target. If a "PER-MEAL CALORIE BUDGET" is listed in the client details above, use those EXACT numbers. Otherwise split the Daily Calorie Target across the meals — for 3 meals use roughly 30% breakfast / 35% lunch / 35% dinner.
+          b. Build and portion EACH meal to land on its budget. Write that meal's real kcal in its metrics. Example: if dinner's budget is 630 kcal, the dinner you write (and its portion sizes) must genuinely be about 630 kcal — not 450.
+          c. After writing all meals for the day, ADD UP every meal's kcal. The total MUST be within ~75 kcal of the Daily Calorie Target. If it is short, GO BACK and increase portion sizes (more rice/potato/protein/oil/nuts) until it reaches the target. If it is over, trim portions. Never leave it short.
+          d. The "dailyTotals" calories figure MUST equal the real sum of that day's meals — never a made-up number that doesn't match the meals above it.
+          This applies to EVERY day in EVERY week, not just day one.
 
-      ⛔ FINAL CHECK BEFORE YOU RESPOND: Re-read every single meal, snack, side and ingredient you have written. If ANY banned food appears (Pork, Bacon, Ham, Alcohol, Turkey, Rotisserie Chicken or any pre-cooked roast chicken, Tempeh, Tofu, Medallions/fancy cuts, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal), REMOVE it and replace it with an approved alternative before returning your answer. Do not return the plan until it is 100% clean. THEN, for every single day, add up the kcal of every meal/snack card and confirm it is within ~50 kcal of the Daily Calorie Target — if it is not, resize portions until it is, before returning your answer.
+      ⛔ FINAL CHECK BEFORE YOU RESPOND: Re-read every single meal, snack, side and ingredient you have written. If ANY banned food appears (Pork, Bacon, Ham, Alcohol, Turkey, Rotisserie Chicken or any pre-cooked roast chicken, Tempeh, Tofu, Medallions/fancy cuts, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal), REMOVE it and replace it with an approved alternative before returning your answer. Do not return the plan until it is 100% clean. THEN, for every single day, ADD UP the kcal of every meal/snack card. If the total is more than ~75 kcal below (or above) the Daily Calorie Target, the plan has FAILED — go back and increase (or trim) portion sizes until every day genuinely reaches the target, then re-check, before returning your answer. A plan that comes in hundreds of calories under target must never be returned.
 
       Return ONLY a valid JSON object matching this EXACT schema. Do NOT truncate the days or weeks arrays:
       {
