@@ -50,6 +50,7 @@ export default function App() {
   const [starterNotes, setStarterNotes] = useState('');
   const [showStarterNotes, setShowStarterNotes] = useState(false);
   const [diaryFiles, setDiaryFiles] = useState<File[]>([]);
+  const [isDraggingDiary, setIsDraggingDiary] = useState(false);
 
   // --- Starter plan edit helpers ---
   const updateStarter = (field, value) => {
@@ -1527,7 +1528,17 @@ ${hasDiary ? `
             </div>
             <div className="p-7 space-y-4">
               <p className="text-sm text-zinc-500">Upload photos of what the client currently eats and the plan will be built around their real habits — same core meals, just fixing the weak spots.</p>
-              <label className="block border-2 border-dashed border-zinc-300 rounded-xl p-6 text-center cursor-pointer hover:border-red-400 transition-all">
+              <label
+                onDragOver={(e) => { e.preventDefault(); setIsDraggingDiary(true); }}
+                onDragLeave={(e) => { e.preventDefault(); setIsDraggingDiary(false); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDraggingDiary(false);
+                  const dropped = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
+                  if (dropped.length) setDiaryFiles(prev => [...prev, ...dropped]);
+                }}
+                className={`block border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${isDraggingDiary ? 'border-red-500 bg-red-50' : 'border-zinc-300 hover:border-red-400'}`}
+              >
                 <input
                   type="file"
                   accept="image/*"
@@ -1536,7 +1547,7 @@ ${hasDiary ? `
                   onChange={(e) => setDiaryFiles(prev => [...prev, ...Array.from(e.target.files || [])])}
                 />
                 <Upload className="w-6 h-6 mx-auto mb-2 text-zinc-400" />
-                <span className="text-sm font-bold text-zinc-600">Click to upload diary photo(s)</span>
+                <span className="text-sm font-bold text-zinc-600">{isDraggingDiary ? 'Drop photos here' : 'Click or drag & drop diary photo(s)'}</span>
               </label>
               {diaryFiles.length > 0 && (
                 <div className="space-y-2">
