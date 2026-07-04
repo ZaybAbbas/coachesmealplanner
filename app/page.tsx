@@ -71,6 +71,9 @@ export default function App() {
   const updateStarterInsight = (i, value) => {
     setStarterPlan(prev => { const n = structuredClone(prev); n.diaryInsights[i] = value; return n; });
   };
+  const updateStarterTldr = (i, value) => {
+    setStarterPlan(prev => { const n = structuredClone(prev); n.tldr[i] = value; return n; });
+  };
 
   // --- Manual edit helpers (let the coach tweak the plan before sending) ---
   const updateMeal = (weekIdx, dayIdx, mealIdx, field, value) => {
@@ -516,6 +519,12 @@ ${hasDiary ? `
 
       SMARTER SWAPS: Give 6 simple "swap this for that" tips in Zayb's style (e.g. white bread → brown bread; fried → air-fried; paratha → chapati; sugary drink → sugar-free; full-fat → light; lamb mince → chicken mince). Each with a very short reason.${hasDiary ? ' Where possible, base swaps on foods you actually saw in their diary.' : ''} NEVER suggest turkey, turkey mince, or any banned food as a swap.
 
+      TLDR — YOUR NEXT STEPS: After everything else, write a "tldr" — exactly 4 short action points that sum up the whole plan. Write these for someone who has zero nutrition knowledge and is not confident reading long documents — think "explain it to a complete beginner who just wants to know what to actually DO". Rules for this section:
+      - Each point is ONE short, plain-English sentence, starting with a simple action verb (e.g. "Have...", "Add...", "Swap...", "Message me if..."). No jargon, no vague advice.
+      - These must be the MOST IMPORTANT, concrete actions from this specific plan — pull from the fundamentals, the menu style, and (if diary insights exist) the specific weaknesses found. Do not invent generic advice unrelated to this plan.
+      - Someone should be able to read ONLY this section, skip everything else, and still know exactly what to do this week.
+      - Keep the tone calm and professional per the TONE RULE above — no cheerleading.
+
       ⛔ FINAL CHECK BEFORE YOU RESPOND: Re-read every meal option, snack and swap. If ANY banned food appears (Pork, Bacon, Ham, Alcohol, Turkey/turkey mince, Rotisserie Chicken, Tempeh, Tofu, Medallions, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal), REMOVE it and replace it with an approved alternative before returning.
 
       Return ONLY a valid JSON object in this EXACT schema:
@@ -531,6 +540,7 @@ ${hasDiary ? `
           "snacks": ["option 1", "option 2", "option 3", "option 4", "option 5"]
         },
         "swaps": [{"from": "White bread", "to": "Brown bread", "why": "More fibre, keeps you fuller"}],
+        "tldr": ["action point 1", "action point 2", "action point 3", "action point 4"],
         "closingTip": "One short motivating line in Zayb's voice."
       }
     `;
@@ -1176,8 +1186,31 @@ ${hasDiary ? `
               </div>
             )}
 
+            {Array.isArray(starterPlan.tldr) && (starterPlan.tldr.length > 0 || isEditing) && (
+              <div className="relative z-10 mt-10 bg-zinc-900 rounded-3xl p-8 border-2 border-red-700">
+                <h3 className="font-black text-white uppercase tracking-wider text-sm mb-4 flex items-center">
+                  <CheckCircle2 className="w-5 h-5 mr-2 text-red-500 shrink-0" />
+                  {isEditing ? (
+                    <input value={hv('tldrHeading', 'TLDR — What To Do')} onChange={(e) => updateStarterHeading('tldrHeading', e.target.value)} className="font-black text-white uppercase tracking-wider text-sm bg-zinc-800 border border-zinc-600 rounded-md px-2 py-0.5 w-full outline-none focus:ring-2 focus:ring-red-500" />
+                  ) : hv('tldrHeading', 'TLDR — What To Do')}
+                </h3>
+                <div className="space-y-3">
+                  {starterPlan.tldr.map((point: string, i: number) => (
+                    <div key={i} className="flex items-start bg-black/40 p-4 rounded-xl">
+                      <CheckCircle2 className="w-5 h-5 mr-3 text-red-500 shrink-0 mt-0.5" />
+                      {isEditing ? (
+                        <textarea value={point || ''} onChange={(e) => updateStarterTldr(i, e.target.value)} rows={2} className="w-full bg-zinc-800 text-zinc-100 font-semibold leading-snug border border-zinc-600 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-red-500 resize-y" />
+                      ) : (
+                        <p className="text-zinc-100 font-semibold leading-snug">{point}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {(starterPlan.closingTip || isEditing) && (
-              <div className="relative z-10 mt-10 bg-red-700 p-8 rounded-3xl shadow-2xl">
+              <div className="relative z-10 mt-8 bg-red-700 p-8 rounded-3xl shadow-2xl">
                 {isEditing ? (
                   <textarea value={starterPlan.closingTip || ''} onChange={(e) => updateStarter('closingTip', e.target.value)} rows={2} className="w-full bg-red-800 text-white font-bold text-lg leading-snug border border-red-500 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-white/50 resize-y" />
                 ) : (
