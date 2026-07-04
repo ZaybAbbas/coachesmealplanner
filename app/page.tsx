@@ -49,6 +49,7 @@ export default function App() {
   const [starterPlan, setStarterPlan] = useState<any>(null);
   const [starterNotes, setStarterNotes] = useState('');
   const [showStarterNotes, setShowStarterNotes] = useState(false);
+  const [diaryFiles, setDiaryFiles] = useState<File[]>([]);
 
   // --- Starter plan edit helpers ---
   const updateStarter = (field, value) => {
@@ -65,6 +66,9 @@ export default function App() {
   };
   const updateStarterHeading = (key, value) => {
     setStarterPlan(prev => { const n = structuredClone(prev); if (!n.headings) n.headings = {}; n.headings[key] = value; return n; });
+  };
+  const updateStarterInsight = (i, value) => {
+    setStarterPlan(prev => { const n = structuredClone(prev); n.diaryInsights[i] = value; return n; });
   };
 
   // --- Manual edit helpers (let the coach tweak the plan before sending) ---
@@ -477,6 +481,8 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
     setView('generating');
     setError('');
 
+    const hasDiary = diaryFiles.length > 0;
+
     const starterPrompt = `
       You are Zayb, an expert nutrition coach for busy South Asian women in the UK. You are creating a gentle "First Two Weeks" STARTER plan for a brand-new client. This is NOT a strict meal plan — it eases them in by focusing on fundamentals and giving them flexible meal options to pick from. NO calorie counting, NO macros, NO daily totals.
 
@@ -490,8 +496,16 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
       ⛔ ABSOLUTE RULE: STRICTLY HALAL. NEVER include Pork, Bacon, Ham, Alcohol, Turkey, Rotisserie Chicken, Tempeh, Tofu, Medallions, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal.
 
       🚫 TONE RULE — STRICTLY PROFESSIONAL, NO EXCEPTIONS: Write in a calm, professional, practical coaching tone. NEVER use corny, cheesy, over-the-top, or "girl power" cheerleading language anywhere (welcome note, fundamentals, menu, swaps, closing tip). 100% BANNED: pet names ("babes", "babe", "hun", "honey", "queen", "gorgeous", "sweetie", "darling", "girl", "girlie", "boss babe"); cheerleading clichés ("you've got this", "you got this", "slay", "you go girl", "girl power", "yass", "one meal at a time babes", "trust the process", "no excuses queen"); and excessive exclamation marks or hype emojis. Keep it direct, grounded and genuinely useful — never cheesy or patronising. The closing tip must be a calm, practical line, NOT a cheer.
-
-      THE FOUR FUNDAMENTALS (rewrite each in your warm, direct Z.A Training voice, personalised to this client):
+${hasDiary ? `
+      📸 FOOD DIARY PHOTOS ATTACHED — READ THESE FIRST: You have been given photo(s) of this client's REAL, CURRENT food diary. Before writing anything else:
+      1. Carefully read every photo. Work out what they actually eat day to day — typical breakfast/lunch/dinner/snacks, rough meal timing, portion habits, and any patterns (e.g. skipping meals, low protein, sugary snacks, large starchy portions, minimal veg).
+      2. Identify 3-5 SPECIFIC, EVIDENCE-BASED weaknesses tied to what you actually saw in the diary — not generic advice. Reference their real habits (e.g. "Your breakfast is mostly toast and jam with no protein" not "eat more protein").
+      3. Build the "Mix & Match" menu to stay AS CLOSE AS POSSIBLE to what they already eat — same core meals, cuisine, and structure they're used to. Do NOT hand them a totally different menu. Only adjust the specific weak points you found (e.g. add a protein source to their existing breakfast, swap their existing sugary snack for a similar-feeling but better one, resize an oversized portion). The goal is minimum disruption to their current routine, maximum fix to the real gaps.
+      4. Fill "diaryInsights" with those 3-5 specific things you noticed, written directly to the client in Zayb's voice (e.g. "Your breakfast is missing protein most days — we're adding an easy protein source without changing what you're used to eating.").
+` : `
+      No food diary was provided — set "diaryInsights" to an empty array [] and build the menu using your normal judgement and the client's cuisine/preferences below.
+`}
+      THE FOUR FUNDAMENTALS (rewrite each in your warm, direct Z.A Training voice, personalised to this client${hasDiary ? ' and what you saw in their diary' : ''}):
       1. Reduce junk food now, with the aim of cutting it right down over time.
       2. Eat two sources of fruit & veg every day (fibre naturally goes up as this increases — you don't need to track fibre separately).
       3. Build this up gradually — small steady steps, not all at once.
@@ -499,7 +513,7 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
 
       MIX & MATCH MENU: Give EXACTLY 5 options each for breakfast, lunch, dinner, and snacks. The client picks whichever they fancy each day — they are NOT assigned to days. Each option = a short meal name plus a simple portion in plain English (e.g. "Eggs on toast — 2 eggs, 1 brown toast, handful spinach"). Every option must have a clear protein. Use the client's cuisine and the Z.A Inspiration Bank style (protein-first, "1.5 fistful" desi portions, Greek yoghurt to bump protein, etc.). Snacks should be simple and protein-friendly. NO calorie numbers anywhere.
 
-      SMARTER SWAPS: Give 6 simple "swap this for that" tips in Zayb's style (e.g. white bread → brown bread; fried → air-fried; paratha → chapati; sugary drink → sugar-free; full-fat → light; lamb mince → chicken mince). Each with a very short reason. NEVER suggest turkey, turkey mince, or any banned food as a swap.
+      SMARTER SWAPS: Give 6 simple "swap this for that" tips in Zayb's style (e.g. white bread → brown bread; fried → air-fried; paratha → chapati; sugary drink → sugar-free; full-fat → light; lamb mince → chicken mince). Each with a very short reason.${hasDiary ? ' Where possible, base swaps on foods you actually saw in their diary.' : ''} NEVER suggest turkey, turkey mince, or any banned food as a swap.
 
       ⛔ FINAL CHECK BEFORE YOU RESPOND: Re-read every meal option, snack and swap. If ANY banned food appears (Pork, Bacon, Ham, Alcohol, Turkey/turkey mince, Rotisserie Chicken, Tempeh, Tofu, Medallions, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal), REMOVE it and replace it with an approved alternative before returning.
 
@@ -507,6 +521,7 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
       {
         "title": "Your First Two Weeks",
         "welcome": "A short, warm, personal note to ${formData.clientName} in Zayb's voice — reassure them this is about easing in, not perfection.",
+        "diaryInsights": ["specific thing noticed 1", "specific thing noticed 2"],
         "fundamentals": ["fundamental 1", "fundamental 2", "fundamental 3", "fundamental 4"],
         "menu": {
           "breakfast": ["option 1", "option 2", "option 3", "option 4", "option 5"],
@@ -519,14 +534,21 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
       }
     `;
 
-    const payload = { contents: [{ parts: [{ text: starterPrompt }] }] };
-
     try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      let response: Response;
+      if (hasDiary) {
+        const fd = new FormData();
+        fd.append('prompt', starterPrompt);
+        diaryFiles.forEach(f => fd.append('diaryImages', f));
+        response = await fetch('/api/generate', { method: 'POST', body: fd });
+      } else {
+        const payload = { contents: [{ parts: [{ text: starterPrompt }] }] };
+        response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
       if (!response.ok) {
         const errorData = await response.text();
         throw new Error(`API Error (${response.status}): ${errorData}`);
@@ -996,6 +1018,23 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
                 ) : (
                   <p className="text-zinc-200 leading-relaxed italic">{starterPlan.welcome}</p>
                 )}
+              </div>
+            )}
+            {Array.isArray(starterPlan.diaryInsights) && (starterPlan.diaryInsights.length > 0 || isEditing) && (
+              <div className="relative z-10 mt-8">
+                <h2 className="text-2xl font-bold text-white mb-5 flex items-center"><HeartPulse className="w-6 h-6 mr-3 text-red-500 shrink-0" />What We Noticed</h2>
+                <div className="space-y-3">
+                  {starterPlan.diaryInsights.map((ins: string, i: number) => (
+                    <div key={i} className="flex items-start bg-black/50 p-4 rounded-xl border border-zinc-800">
+                      <span className="text-red-500 mr-4 shrink-0">•</span>
+                      {isEditing ? (
+                        <textarea value={ins || ''} onChange={(e) => updateStarterInsight(i, e.target.value)} rows={2} className="w-full bg-zinc-800 text-zinc-100 font-medium leading-snug border border-zinc-600 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-red-500 resize-y" />
+                      ) : (
+                        <p className="text-zinc-200 font-medium leading-snug">{ins}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             {Array.isArray(starterPlan.fundamentals) && (
@@ -1477,6 +1516,38 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
                 <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Foods They Have / Want To Use <span className="text-zinc-400 normal-case">(optional)</span></label>
                 <textarea name="availableFoods" value={formData.availableFoods} onChange={handleInputChange} placeholder="Leave blank to let the AI choose from approved foods..." rows={2} className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none resize-none transition-all text-black font-medium" />
               </div>
+            </div>
+          </div>
+
+          <div className="bg-white shadow-sm border border-zinc-200 rounded-2xl overflow-hidden">
+            <div className="bg-zinc-50 border-b border-zinc-200 p-5">
+              <h2 className="text-lg font-black flex items-center text-black uppercase tracking-wide">
+                <Upload className="w-5 h-5 mr-3 text-red-700" /> Food Diary <span className="text-zinc-400 normal-case font-medium text-xs ml-2">(optional)</span>
+              </h2>
+            </div>
+            <div className="p-7 space-y-4">
+              <p className="text-sm text-zinc-500">Upload photos of what the client currently eats and the plan will be built around their real habits — same core meals, just fixing the weak spots.</p>
+              <label className="block border-2 border-dashed border-zinc-300 rounded-xl p-6 text-center cursor-pointer hover:border-red-400 transition-all">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => setDiaryFiles(prev => [...prev, ...Array.from(e.target.files || [])])}
+                />
+                <Upload className="w-6 h-6 mx-auto mb-2 text-zinc-400" />
+                <span className="text-sm font-bold text-zinc-600">Click to upload diary photo(s)</span>
+              </label>
+              {diaryFiles.length > 0 && (
+                <div className="space-y-2">
+                  {diaryFiles.map((f, i) => (
+                    <div key={i} className="flex items-center justify-between bg-zinc-50 border border-zinc-200 rounded-lg px-4 py-2">
+                      <span className="text-sm text-zinc-700 truncate">{f.name}</span>
+                      <button type="button" onClick={() => setDiaryFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-xs font-bold text-red-600 hover:text-red-800 ml-3">Remove</button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

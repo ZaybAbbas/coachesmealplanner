@@ -2,19 +2,51 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
-export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+async function fileToBase64(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, Array.from(chunk));
+  }
+  return btoa(binary);
+}
 
-  // Extract prompt from payload
-  const prompt = body.contents?.[0]?.parts?.[0]?.text || '';
+export async function POST(request: NextRequest) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const contentType = request.headers.get('content-type') || '';
+
+  let content: any;
+
+  if (contentType.includes('multipart/form-data')) {
+    // Diary-photo flow: text prompt + one or more images sent as form data
+    const formData = await request.formData();
+    const prompt = (formData.get('prompt') as string) || '';
+    const images = formData.getAll('diaryImages') as File[];
+
+    const imageBlocks = await Promise.all(images.map(async (file) => ({
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: file.type || 'image/jpeg',
+        data: await fileToBase64(file)
+      }
+    })));
+
+    content = [...imageBlocks, { type: 'text', text: prompt }];
+  } else {
+    const body = await request.json();
+    content = body.contents?.[0]?.parts?.[0]?.text || '';
+  }
 
   const payload = {
     model: 'claude-haiku-4-5',
     max_tokens: 16000,
     stream: true,
     messages: [
-      { role: 'user', content: prompt }
+      { role: 'user', content }
     ]
   };
 
