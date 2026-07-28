@@ -5,7 +5,7 @@ import {
   User, Calendar, Target, 
   FileText, Download, ArrowLeft, Loader2, CheckCircle2,
   Utensils, Activity, AlertCircle, Globe, HeartPulse,
-  Clock, Lightbulb, Wand2, Upload
+  Clock, Lightbulb, Wand2, Upload, ChefHat, ShoppingCart, Timer
 } from 'lucide-react';
 
 
@@ -51,6 +51,22 @@ export default function App() {
   const [showStarterNotes, setShowStarterNotes] = useState(false);
   const [diaryFiles, setDiaryFiles] = useState<File[]>([]);
   const [isDraggingDiary, setIsDraggingDiary] = useState(false);
+  const [recipeBook, setRecipeBook] = useState<any>(null);
+  const [isGeneratingRecipes, setIsGeneratingRecipes] = useState(false);
+
+  // --- Recipe book edit helpers ---
+  const updateRecipe = (i, field, value) => {
+    setRecipeBook(prev => { const n = structuredClone(prev); n.recipes[i][field] = value; return n; });
+  };
+  const updateRecipeLine = (i, field, lineIdx, value) => {
+    setRecipeBook(prev => { const n = structuredClone(prev); n.recipes[i][field][lineIdx] = value; return n; });
+  };
+  const updatePrepField = (field, value) => {
+    setRecipeBook(prev => { const n = structuredClone(prev); n.prepSession[field] = value; return n; });
+  };
+  const updatePrepStep = (i, value) => {
+    setRecipeBook(prev => { const n = structuredClone(prev); n.prepSession.steps[i] = value; return n; });
+  };
 
   // --- Starter plan edit helpers ---
   const updateStarter = (field, value) => {
@@ -160,6 +176,7 @@ export default function App() {
     setIsConverting(true);
     setView('generating');
     setError('');
+    setRecipeBook(null); // recipes belong to the old plan — don't carry them over
     try {
       const formData = new FormData();
       formData.append('file', convertFile);
@@ -205,7 +222,8 @@ export default function App() {
   const generateAIPlan = async () => {
     setView('generating');
     setError('');
-    
+    setRecipeBook(null); // recipes belong to the old plan — don't carry them over
+
     const aiWeeks = 1;
 
     // If a manual calorie target is given, work out a concrete per-meal kcal budget
@@ -592,6 +610,131 @@ ${hasDiary ? `
     }
   };
 
+  const generateRecipeBook = async () => {
+    // Collect every distinct meal from the plan. The same meal can appear on several
+    // days — the client only needs the method written once.
+    const uniqueMeals: any[] = [];
+    const seen = new Set<string>();
+    (Array.isArray(generatedPlan?.weeks) ? generatedPlan.weeks : []).forEach((week: any) => {
+      (Array.isArray(week?.days) ? week.days : []).forEach((day: any) => {
+        (Array.isArray(day?.meals) ? day.meals : []).forEach((meal: any) => {
+          const key = (meal?.name || '').trim().toLowerCase();
+          // Skip the fasting-window card and the optional-snack placeholder — neither is a dish.
+          if (!key || seen.has(key)) return;
+          if (meal?.type === 'Fasting Window' || meal?.type === 'Optional Snack') return;
+          seen.add(key);
+          uniqueMeals.push(meal);
+        });
+      });
+    });
+
+    if (uniqueMeals.length === 0) {
+      setError('🚨 ERROR: No meals found in this plan to write recipes for.');
+      return;
+    }
+
+    setIsGeneratingRecipes(true);
+    setView('generating');
+    setError('');
+
+    const mealList = uniqueMeals
+      .map((m, i) => `${i + 1}. ${m.name}${m.portionGuide ? ` — portion: ${m.portionGuide}` : ''}${m.description ? ` (${m.description})` : ''}`)
+      .join('\n      ');
+
+    const recipePrompt = `
+      You are Zayb, an expert nutrition coach for busy South Asian women in the UK. You have already written this client a meal plan. Now write the RECIPE BOOK that goes with it — a separate document telling her exactly HOW to cook the meals.
+
+      CLIENT:
+      - Name: ${formData.clientName || 'Client'}
+      - Cooking for: ${formData.cookingFor}${formData.cookingFor === 'Family (with kids)' ? ` (${formData.familySize} people total)` : ''}
+      - Time available per day: ${formData.cookingTime}
+      - Batch cooking: ${formData.batchCooking}
+      - Regional cuisine: ${formData.regionalCuisine}
+      - Dietary preferences/restrictions: ${formData.dietaryPreferences}
+
+      THE MEALS IN HER PLAN:
+      ${mealList}
+
+      ⛔ ABSOLUTE RULE: STRICTLY HALAL. NEVER mention Pork, Bacon, Ham, Alcohol, Turkey, Rotisserie Chicken, Tempeh, Tofu, Medallions, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal — not as an ingredient, a substitute, or a suggestion.
+
+      🚫 TONE RULE — STRICTLY PROFESSIONAL: Calm, direct, practical coaching voice. NEVER use pet names ("babes", "hun", "queen", "gorgeous", "girl") or cheerleading clichés ("you've got this", "slay", "trust the process"). No hype emojis, no excessive exclamation marks. Grounded Z.A phrases are fine — "chill on the oil", "air-fry to save time", "use common sense", "WhatsApp me if you're unsure".
+
+      ⭐ RULE 1 — ONLY WRITE RECIPES FOR MEALS THAT ACTUALLY NEED COOKING OR REAL ASSEMBLY. This is the most important rule. Go through the meal list above and SKIP any meal that is grab-and-eat or needs no real method, for example: a protein yoghurt/Skyr pot, a protein bar, a piece of fruit, a handful of nuts, plain rice cakes, a Babybel, or anything that is just "open it and eat it". Only write a recipe when there is genuine cooking or multi-step assembly involved (cooking, frying, baking, air-frying, boiling, blending, or building something like a wrap, overnight oats or a smoothie). It is completely fine — and expected — to return FEWER recipes than there are meals. Do NOT pad the list. Quality over quantity.
+
+      RULE 2 — MATCH THE PLAN EXACTLY: Each recipe's "name" MUST be written exactly as the meal name appears in the list above, so she can match it to her plan. Ingredients and quantities MUST match the portion guide given for that meal. Never change her portions.
+
+      RULE 3 — KEEP IT SHORT (this document is printed, two recipes to a page — overlong recipes break the layout): MAXIMUM 8 ingredients and MAXIMUM 5 method steps per recipe. Each ingredient is a short line (e.g. "150g chicken keema"). Each method step is ONE short sentence, ideally under 15 words. "coachNote" must be one short line or null. Never exceed these limits.
+
+      RULE 3b — METHOD: Give 3 to 5 short, numbered steps. One short sentence each, plain English, written directly to her. Assume zero cooking confidence — say what to do, not why. Use the Z.A cooking methods: cook with cooking spray or a splash of water first and add a little oil later, pour oil with a spoon not the bottle, air-fry instead of fry, no fried onions in biryani, stir Greek yoghurt into low-protein curries at the end.
+
+      RULE 4 — FAMILY PORTIONS: ${formData.cookingFor === 'Herself only' ? 'She is cooking for herself only — ingredient amounts are just for her.' : `She is cooking for ${formData.cookingFor === 'Couple' ? '2 people' : formData.familySize + ' people'}. Write the ingredients for the WHOLE batch, then in "servesNote" state her individual portion clearly first, then the batch. Keep it under 15 words.`}
+
+      RULE 5 — COOK TIME: "cookTime" must respect her ${formData.cookingTime} limit. If a dish genuinely takes longer, say so honestly and put it in the prep session instead.
+
+      RULE 6 — THE PREP SESSION: Write a single batch-prep session she can do in one go ${formData.batchCooking === 'Yes - Prioritise Batch Cooking' ? '(she has asked to prioritise batch cooking — make this substantial and genuinely useful)' : '(she prefers cooking fresh, so keep this light — only the few things genuinely worth doing ahead, like boiling eggs or chopping veg)'}. Give 4-6 short steps in the order she should do them, each one sentence. Base every step on the actual meals above — never generic advice. "timeNeeded" should be an honest estimate. "storageNote" is one short line on how long things keep in the fridge.
+
+      Return ONLY a valid JSON object in this EXACT schema:
+      {
+        "title": "Your Recipe Book",
+        "intro": "One short, calm line to ${formData.clientName || 'the client'} explaining this shows her how to cook the meals in her plan.",
+        "prepSession": {
+          "title": "Your Prep Session",
+          "timeNeeded": "e.g. About 40 minutes",
+          "steps": ["step 1", "step 2", "step 3", "step 4"],
+          "storageNote": "One short line about fridge storage."
+        },
+        "recipes": [
+          {
+            "name": "Exactly as written in the plan",
+            "cookTime": "e.g. 20 mins",
+            "servesNote": "Her portion first, then batch if cooking for others. Null if cooking for herself only.",
+            "ingredients": ["150g chicken keema", "1 small onion", "1 tsp garam masala"],
+            "method": ["Step one.", "Step two.", "Step three."],
+            "coachNote": "One short optional Z.A tip, or null."
+          }
+        ]
+      }
+    `;
+
+    try {
+      const payload = { contents: [{ parts: [{ text: recipePrompt }] }] };
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`API Error (${response.status}): ${errorData}`);
+      }
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullText += decoder.decode(value, { stream: true });
+        setStreamedChars(fullText.length);
+      }
+      let cleanText = fullText.replace(/```json/gi, '').replace(/```/gi, '').trim();
+      const firstBrace = cleanText.indexOf('{');
+      const lastBrace = cleanText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+      const parsedData = JSON.parse(cleanText);
+      setRecipeBook(parsedData);
+      setIsEditing(false);
+      setStreamedChars(0);
+      setView('recipeBook');
+    } catch (err: any) {
+      console.error("Recipe Book Error:", err);
+      setError(`🚨 ERROR: ${err.message}`);
+      setStreamedChars(0);
+      setView('preview');
+    } finally {
+      setIsGeneratingRecipes(false);
+    }
+  };
+
   if (view === 'generating') {
     const progress = Math.min(Math.round((streamedChars / 12000) * 100), 99);
     return (
@@ -600,14 +743,20 @@ ${hasDiary ? `
         <h2 className="text-2xl font-bold text-zinc-900 mb-2">
           {isConverting
             ? (streamedChars === 0 ? 'Reading Your Plan...' : 'Converting to Cups...')
-            : (streamedChars === 0 ? 'Analyzing Client Data...' : 'Writing Your Plan...')}
+            : isGeneratingRecipes
+              ? (streamedChars === 0 ? 'Reading the Meal Plan...' : 'Writing the Recipes...')
+              : (streamedChars === 0 ? 'Analyzing Client Data...' : 'Writing Your Plan...')}
         </h2>
         <p className="text-zinc-600 max-w-md text-center mb-6">
           {isConverting
             ? (streamedChars === 0 ? 'Claude is reading your uploaded PDF...' : 'Converting all measurements to cup format — same meals, just different units...')
-            : (streamedChars === 0
-              ? `Calculating TDEE, adapting for ${formData.hormonalStatus}, and sourcing ${formData.regionalCuisine} recipes within a ${formData.cookingTime} window...`
-              : `Building meals and portion guides for ${formData.clientName}...`)}
+            : isGeneratingRecipes
+              ? (streamedChars === 0
+                ? 'Working out which meals actually need a method — grab-and-eat items get skipped...'
+                : `Writing step-by-step methods and the prep session for ${formData.clientName || 'your client'}...`)
+              : (streamedChars === 0
+                ? `Calculating TDEE, adapting for ${formData.hormonalStatus}, and sourcing ${formData.regionalCuisine} recipes within a ${formData.cookingTime} window...`
+                : `Building meals and portion guides for ${formData.clientName}...`)}
         </p>
         {streamedChars > 0 && (
           <div className="w-full max-w-sm">
@@ -631,7 +780,7 @@ ${hasDiary ? `
     return (
       <div className="min-h-screen bg-zinc-200 py-8 print:py-0 print:bg-white flex flex-col items-center">
         {/* Controls */}
-        <div className="max-w-[210mm] w-full flex justify-between items-center mb-6 print:hidden px-4 md:px-0">
+        <div className="max-w-[210mm] w-full flex flex-wrap justify-between items-center gap-2 mb-6 print:hidden px-4 md:px-0">
           <button onClick={() => setView('dashboard')} className="flex items-center text-zinc-600 hover:text-black bg-white px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors">
             <ArrowLeft className="w-4 h-4 mr-2" /> Edit Details
           </button>
@@ -644,10 +793,22 @@ ${hasDiary ? `
           <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors border ${isEditing ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-50'}`}>
             {isEditing ? '✓ Done Editing' : '✏️ Edit Plan'}
           </button>
+          <button onClick={() => { if (recipeBook) { setIsEditing(false); setView('recipeBook'); } else { generateRecipeBook(); } }} className="flex items-center bg-black hover:bg-zinc-800 text-white px-5 py-2 rounded-lg shadow-md font-bold transition-all">
+            <ChefHat className="w-4 h-4 mr-2" /> {recipeBook ? 'Open Recipe Book' : 'Generate Recipe Book'}
+          </button>
           <button onClick={() => { setIsEditing(false); setTimeout(() => window.print(), 50); }} className="flex items-center bg-red-700 hover:bg-red-800 text-white px-6 py-2 rounded-lg shadow-md font-bold transition-all">
             <Download className="w-4 h-4 mr-2" /> Export to PDF
           </button>
         </div>
+
+        {/* Error banner (e.g. a failed recipe book generation) */}
+        {error && (
+          <div className="max-w-[210mm] w-full mb-6 print:hidden px-4 md:px-0">
+            <div className="bg-red-50 border border-red-300 rounded-xl px-5 py-3 text-red-800 text-sm font-medium">
+              {error}
+            </div>
+          </div>
+        )}
 
         {/* Edit mode helper banner */}
         {isEditing && (
@@ -894,8 +1055,8 @@ ${hasDiary ? `
             </div>
           ))}
 
-          {/* Shopping List & Summary Page */}
-          <div className="page break-before-page break-after-page min-h-[297mm] p-16 pt-20 bg-zinc-50 relative overflow-hidden">
+          {/* Shopping List Page — its own page so she can print or screenshot just this one for the shop */}
+          <div className="page break-before-page break-after-page min-h-[297mm] p-16 pt-20 bg-zinc-50 relative overflow-hidden flex flex-col">
             {/* Subtle Page Watermark */}
             <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
               <img src={LOGO_URL} className="w-[500px] h-[500px] object-contain grayscale" alt="" />
@@ -903,32 +1064,45 @@ ${hasDiary ? `
 
             <header className="relative z-10 mb-10 border-b-2 border-zinc-200 pb-6 flex justify-between items-end">
               <div>
-                <h2 className="text-4xl font-black text-black">Shopping List & Tips</h2>
-                <p className="text-zinc-500 mt-2 text-lg font-medium">Everything you need for your protocol.</p>
+                <h4 className="text-red-700 font-bold tracking-widest uppercase text-sm mb-1">Take This To The Shop</h4>
+                <h2 className="text-4xl font-black text-black">Your Shopping List</h2>
+                <p className="text-zinc-500 mt-2 text-lg font-medium">Tick each one off as it goes in the trolley.</p>
               </div>
-              <img src={LOGO_URL} alt="ZA" className="w-12 h-12 object-contain opacity-80" />
+              <ShoppingCart className="w-12 h-12 text-red-700 opacity-80 shrink-0" />
             </header>
 
-            <div className="grid grid-cols-2 gap-8 mb-12 relative z-10">
+            <div className="grid grid-cols-2 gap-8 relative z-10">
               {Object.entries(generatedPlan?.shoppingList || {}).map(([category, items]) => (
                 <div key={category} className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
                   <h3 className="font-bold text-black uppercase tracking-wider text-sm mb-4 border-b border-zinc-100 pb-3">
                     {category.replace(/([A-Z])/g, ' $1').trim()}
                   </h3>
-                  <ul className="space-y-2.5">
+                  <ul className="space-y-3">
                     {(Array.isArray(items) ? items : []).map((item, idx) => (
                       <li key={idx} className="flex items-start text-zinc-700 text-sm font-medium">
-                        <div className="w-1.5 h-1.5 bg-red-600 rounded-full mr-3 mt-1.5 shrink-0"></div>
+                        <div className="w-4 h-4 border-2 border-zinc-300 rounded mr-3 mt-0.5 shrink-0"></div>
                         {isEditing ? (
                           <input value={item || ''} onChange={(e) => updateShoppingItem(category, idx, e.target.value)} className="w-full text-zinc-700 text-sm font-medium border border-zinc-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400" />
                         ) : (
-                          item
+                          <span className="leading-snug">{item}</span>
                         )}
                       </li>
                     ))}
                   </ul>
                 </div>
               ))}
+            </div>
+
+            <p className="relative z-10 mt-auto pt-8 text-zinc-400 text-xs italic text-center">
+              Quantities are a guide — buy what makes sense for your household.
+            </p>
+          </div>
+
+          {/* Coach's Tips & Summary Page */}
+          <div className="page break-before-page break-after-page min-h-[297mm] p-16 pt-20 bg-zinc-50 relative overflow-hidden flex flex-col justify-center">
+            {/* Subtle Page Watermark */}
+            <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
+              <img src={LOGO_URL} className="w-[500px] h-[500px] object-contain grayscale" alt="" />
             </div>
 
             <div className="bg-black text-white p-10 rounded-3xl relative z-10 shadow-2xl">
@@ -958,6 +1132,264 @@ ${hasDiary ? `
               </div>
             </div>
           </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'recipeBook' && recipeBook) {
+    const recipes = Array.isArray(recipeBook?.recipes) ? recipeBook.recipes : [];
+    const prep = recipeBook?.prepSession;
+    // 2 recipes to an A4 page. Three cards measured ~1430px against A4's 1123px,
+    // which silently spilled onto a second sheet and broke a card in half.
+    const RECIPES_PER_PAGE = 2;
+    const recipePages: any[][] = [];
+    for (let i = 0; i < recipes.length; i += RECIPES_PER_PAGE) recipePages.push(recipes.slice(i, i + RECIPES_PER_PAGE));
+
+    return (
+      <div className="min-h-screen bg-zinc-200 py-8 print:py-0 print:bg-white flex flex-col items-center">
+        {/* Controls */}
+        <div className="max-w-[210mm] w-full flex flex-wrap justify-between items-center gap-2 mb-6 print:hidden px-4 md:px-0">
+          <button onClick={() => { setIsEditing(false); setView('preview'); }} className="flex items-center text-zinc-600 hover:text-black bg-white px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors">
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Plan
+          </button>
+          <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors border ${isEditing ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-50'}`}>
+            {isEditing ? '✓ Done Editing' : '✏️ Edit Recipes'}
+          </button>
+          <button onClick={generateRecipeBook} className="flex items-center text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-50 px-4 py-2 rounded-lg shadow-sm font-semibold transition-colors">
+            <Wand2 className="w-4 h-4 mr-2" /> Regenerate
+          </button>
+          <button onClick={() => { setIsEditing(false); setTimeout(() => window.print(), 50); }} className="flex items-center bg-red-700 hover:bg-red-800 text-white px-6 py-2 rounded-lg shadow-md font-bold transition-all">
+            <Download className="w-4 h-4 mr-2" /> Export Recipe Book
+          </button>
+        </div>
+
+        {/* Separate-document reminder */}
+        <div className="max-w-[210mm] w-full mb-6 print:hidden px-4 md:px-0">
+          <div className="bg-zinc-800 text-zinc-100 rounded-xl px-5 py-3 text-sm font-medium flex items-center gap-2">
+            <ChefHat className="w-4 h-4 shrink-0 text-red-400" />
+            <span>This is a <strong className="text-white">separate PDF</strong> from the meal plan — export it on its own and send both. {recipes.length} recipe{recipes.length === 1 ? '' : 's'}, {recipePages.length + 2} pages.</span>
+          </div>
+        </div>
+
+        {isEditing && (
+          <div className="max-w-[210mm] w-full mb-6 print:hidden px-4 md:px-0">
+            <div className="bg-green-50 border border-green-300 rounded-xl px-5 py-3 text-green-800 text-sm font-medium flex items-center gap-2">
+              <span className="text-lg">✏️</span>
+              <span><strong>Edit mode is ON.</strong> Click any ingredient, step or note to change it. Tap "Done Editing" when finished.</span>
+            </div>
+          </div>
+        )}
+
+        {/* --- START RECIPE BOOK DOCUMENT --- */}
+        <div className="document-container w-full max-w-[210mm] bg-white shadow-2xl print:shadow-none text-zinc-900 relative">
+
+          {/* Cover */}
+          <div className="page break-after-page min-h-[297mm] flex flex-col relative overflow-hidden bg-black text-white p-16">
+            <div className="absolute top-0 right-0 w-full h-full opacity-30 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-red-700 via-transparent to-transparent pointer-events-none"></div>
+
+            <header className="relative z-10 flex flex-col items-start mt-8">
+              <div className="bg-white p-4 rounded-3xl shadow-xl shadow-red-900/20 mb-10">
+                <img src={LOGO_URL} alt="Z.A Training Logo" className="w-24 h-24 object-contain" />
+              </div>
+              <h3 className="text-red-500 font-bold tracking-[0.2em] uppercase mb-3 text-sm">Z.A Training & Education</h3>
+              {isEditing ? (
+                <input value={recipeBook?.title || ''} onChange={(e) => setRecipeBook(prev => ({ ...prev, title: e.target.value }))} className="text-4xl font-extrabold leading-tight mb-4 text-white bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2 w-full outline-none focus:ring-2 focus:ring-red-500" />
+              ) : (
+                <h1 className="text-5xl font-extrabold leading-tight mb-4 text-white">{recipeBook?.title || 'Your Recipe Book'}</h1>
+              )}
+              <p className="text-2xl text-zinc-400 font-light">Prepared for <span className="text-white font-semibold">{formData.clientName || 'Client'}</span></p>
+            </header>
+
+            <div className="relative z-10 mt-16 bg-zinc-900/60 p-8 rounded-3xl border border-red-900/50 backdrop-blur-sm shadow-2xl">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+                <ChefHat className="w-6 h-6 mr-3 text-red-500" />
+                How To Use This
+              </h2>
+              {isEditing ? (
+                <textarea value={recipeBook?.intro || ''} onChange={(e) => setRecipeBook(prev => ({ ...prev, intro: e.target.value }))} rows={3} className="w-full bg-zinc-800 text-zinc-200 leading-relaxed text-lg border border-zinc-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 resize-y" />
+              ) : (
+                <p className="text-zinc-300 leading-relaxed text-lg">{recipeBook?.intro || 'This shows you exactly how to cook the meals in your plan.'}</p>
+              )}
+              <p className="text-zinc-500 leading-relaxed text-sm mt-5 pt-5 border-t border-zinc-800">
+                Only the meals that need real cooking are in here. Anything grab-and-eat (a yoghurt pot, a protein bar, fruit) doesn't need a recipe — just follow the portion on your plan.
+              </p>
+            </div>
+
+            <div className="relative z-10 mt-8 bg-red-700 p-8 rounded-3xl shadow-2xl">
+              <p className="text-white font-black text-lg uppercase tracking-widest mb-2">Keep This With Your Plan</p>
+              <p className="text-red-100 font-medium leading-snug">Your meal plan tells you what to eat and how much. This book tells you how to make it. Always WhatsApp me if you're ever unsure.</p>
+            </div>
+          </div>
+
+          {/* Prep Session Page */}
+          {prep && (
+            <div className="page break-before-page break-after-page min-h-[297mm] p-16 pt-20 bg-white flex flex-col relative overflow-hidden">
+              <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
+                <img src={LOGO_URL} className="w-[500px] h-[500px] object-contain grayscale" alt="" />
+              </div>
+
+              <header className="relative z-10 mb-10 border-b-2 border-zinc-100 pb-5 flex justify-between items-end">
+                <div>
+                  <h4 className="text-red-700 font-bold tracking-widest uppercase text-sm mb-1">Do This Once, Coast All Week</h4>
+                  {isEditing ? (
+                    <input value={prep?.title || ''} onChange={(e) => updatePrepField('title', e.target.value)} className="text-4xl font-black text-black border border-zinc-300 rounded-lg px-3 py-1 w-full outline-none focus:ring-2 focus:ring-red-400" />
+                  ) : (
+                    <h2 className="text-4xl font-black text-black">{prep?.title || 'Your Prep Session'}</h2>
+                  )}
+                </div>
+                <img src={LOGO_URL} alt="ZA" className="w-10 h-10 object-contain opacity-80" />
+              </header>
+
+              <div className="relative z-10 mb-8 bg-red-50 border border-red-100 rounded-2xl px-6 py-4 flex items-center gap-3">
+                <Timer className="w-6 h-6 text-red-700 shrink-0" />
+                <div>
+                  <p className="text-xs font-black text-red-700 uppercase tracking-wider">Time Needed</p>
+                  {isEditing ? (
+                    <input value={prep?.timeNeeded || ''} onChange={(e) => updatePrepField('timeNeeded', e.target.value)} className="text-lg font-bold text-zinc-900 border border-red-200 rounded-md px-2 py-1 mt-1 w-full outline-none focus:ring-2 focus:ring-red-400 bg-white" />
+                  ) : (
+                    <p className="text-lg font-bold text-zinc-900">{prep?.timeNeeded || 'About 40 minutes'}</p>
+                  )}
+                </div>
+              </div>
+
+              <ol className="relative z-10 space-y-5 flex-1">
+                {(Array.isArray(prep?.steps) ? prep.steps : []).map((step: string, idx: number) => (
+                  <li key={idx} className="flex items-start bg-white border border-zinc-200 shadow-sm rounded-2xl p-5 relative overflow-hidden">
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-red-700 rounded-l-2xl"></div>
+                    <span className="flex items-center justify-center w-9 h-9 bg-black text-white rounded-full font-black text-sm shrink-0 ml-2 mr-4">{idx + 1}</span>
+                    {isEditing ? (
+                      <textarea value={step || ''} onChange={(e) => updatePrepStep(idx, e.target.value)} rows={2} className="w-full text-zinc-800 font-medium leading-relaxed border border-zinc-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-400 resize-y" />
+                    ) : (
+                      <p className="text-zinc-800 font-medium leading-relaxed pt-1.5">{step}</p>
+                    )}
+                  </li>
+                ))}
+              </ol>
+
+              {(prep?.storageNote || isEditing) && (
+                <div className="relative z-10 mt-8 bg-black text-white rounded-2xl px-6 py-5 flex items-start gap-3">
+                  <Lightbulb className="w-6 h-6 text-red-500 shrink-0 mt-0.5" />
+                  <div className="w-full">
+                    <p className="text-red-500 font-bold uppercase tracking-widest text-xs mb-1.5">Keeping It Fresh</p>
+                    {isEditing ? (
+                      <textarea value={prep?.storageNote || ''} onChange={(e) => updatePrepField('storageNote', e.target.value)} rows={2} className="w-full bg-zinc-800 text-zinc-200 leading-relaxed border border-zinc-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500 resize-y" />
+                    ) : (
+                      <p className="text-zinc-300 leading-relaxed">{prep.storageNote}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Recipe Pages — 3 per page */}
+          {recipePages.map((pageRecipes, pageIdx) => (
+            <div key={pageIdx} className="page break-before-page break-after-page h-[297mm] p-12 pt-14 bg-white flex flex-col relative overflow-hidden">
+              <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
+                <img src={LOGO_URL} className="w-[500px] h-[500px] object-contain grayscale" alt="" />
+              </div>
+
+              <header className="relative z-10 mb-6 border-b-2 border-zinc-100 pb-4 flex justify-between items-end shrink-0">
+                <div>
+                  <h4 className="text-red-700 font-bold tracking-widest uppercase text-sm mb-1">How To Cook It</h4>
+                  <h2 className="text-4xl font-black text-black">Recipes</h2>
+                </div>
+                <img src={LOGO_URL} alt="ZA" className="w-10 h-10 object-contain opacity-80" />
+              </header>
+
+              <div className="flex-1 min-h-0 space-y-5 relative z-10">
+                {pageRecipes.map((recipe: any, i: number) => {
+                  const globalIdx = pageIdx * RECIPES_PER_PAGE + i;
+                  return (
+                    <div key={i} className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-5 relative overflow-hidden">
+                      <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-red-700 rounded-l-2xl"></div>
+
+                      <div className="flex justify-between items-start mb-3 pl-2 gap-3">
+                        {isEditing ? (
+                          <input value={recipe?.name || ''} onChange={(e) => updateRecipe(globalIdx, 'name', e.target.value)} className="text-xl font-bold text-black w-2/3 border border-zinc-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-red-400" />
+                        ) : (
+                          <h4 className="text-xl font-bold text-black">{recipe?.name || 'Recipe'}</h4>
+                        )}
+                        {(recipe?.cookTime || isEditing) && (
+                          isEditing ? (
+                            <input value={recipe?.cookTime || ''} onChange={(e) => updateRecipe(globalIdx, 'cookTime', e.target.value)} className="text-xs font-bold text-zinc-700 bg-zinc-100 px-3 py-1 rounded-md border border-zinc-300 outline-none focus:ring-2 focus:ring-red-400 text-right w-1/4" />
+                          ) : (
+                            <span className="flex items-center text-xs font-bold text-zinc-500 bg-zinc-100 px-3 py-1 rounded-md border border-zinc-200 shrink-0">
+                              <Clock className="w-3.5 h-3.5 mr-1.5 text-red-600" />{recipe.cookTime}
+                            </span>
+                          )
+                        )}
+                      </div>
+
+                      {recipe?.servesNote && (
+                        <div className="ml-2 mb-3 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
+                          <p className="text-xs font-black text-red-700 uppercase tracking-wider mb-1">Portions</p>
+                          {isEditing ? (
+                            <textarea value={recipe?.servesNote || ''} onChange={(e) => updateRecipe(globalIdx, 'servesNote', e.target.value)} rows={2} className="text-sm font-semibold text-zinc-800 w-full leading-relaxed border border-red-200 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-red-400 resize-y bg-white" />
+                          ) : (
+                            <p className="text-sm font-semibold text-zinc-800 leading-relaxed">{recipe.servesNote}</p>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-5 gap-5 pl-2">
+                        {/* Ingredients */}
+                        <div className="col-span-2">
+                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">You Need</p>
+                          <ul className="space-y-1.5">
+                            {(Array.isArray(recipe?.ingredients) ? recipe.ingredients : []).map((ing: string, ingIdx: number) => (
+                              <li key={ingIdx} className="flex items-start text-zinc-700 text-sm">
+                                <div className="w-1.5 h-1.5 bg-red-600 rounded-full mr-2.5 mt-1.5 shrink-0"></div>
+                                {isEditing ? (
+                                  <input value={ing || ''} onChange={(e) => updateRecipeLine(globalIdx, 'ingredients', ingIdx, e.target.value)} className="w-full text-sm border border-zinc-300 rounded-md px-2 py-0.5 outline-none focus:ring-2 focus:ring-red-400" />
+                                ) : (
+                                  <span className="leading-snug">{ing}</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* Method */}
+                        <div className="col-span-3">
+                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">What To Do</p>
+                          <ol className="space-y-2">
+                            {(Array.isArray(recipe?.method) ? recipe.method : []).map((step: string, sIdx: number) => (
+                              <li key={sIdx} className="flex items-start text-zinc-700 text-sm">
+                                <span className="flex items-center justify-center w-5 h-5 bg-black text-white rounded-full text-[10px] font-black shrink-0 mr-2.5 mt-0.5">{sIdx + 1}</span>
+                                {isEditing ? (
+                                  <textarea value={step || ''} onChange={(e) => updateRecipeLine(globalIdx, 'method', sIdx, e.target.value)} rows={2} className="w-full text-sm border border-zinc-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400 resize-y" />
+                                ) : (
+                                  <span className="leading-snug">{step}</span>
+                                )}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      </div>
+
+                      {recipe?.coachNote && (
+                        <div className="ml-2 mt-4 pt-4 border-t border-zinc-100 flex items-start text-zinc-700 bg-zinc-50 px-4 py-3 rounded-xl text-sm border border-zinc-200/50">
+                          <Lightbulb className="w-4 h-4 mr-2.5 mt-0.5 shrink-0 text-red-600" />
+                          {isEditing ? (
+                            <textarea value={recipe?.coachNote || ''} onChange={(e) => updateRecipe(globalIdx, 'coachNote', e.target.value)} rows={2} className="w-full text-sm border border-zinc-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400 resize-y bg-white" />
+                          ) : (
+                            <span className="font-medium"><strong className="text-black">Coach's Note:</strong> {recipe.coachNote}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className="relative z-10 mt-4 text-zinc-400 text-xs italic text-center shrink-0">
+                Stick to the portions on your meal plan — these methods are just how to put it together.
+              </p>
+            </div>
+          ))}
 
         </div>
       </div>
