@@ -5,7 +5,7 @@ import {
   User, Calendar, Target, 
   FileText, Download, ArrowLeft, Loader2, CheckCircle2,
   Utensils, Activity, AlertCircle, Globe, HeartPulse,
-  Clock, Lightbulb, Wand2, Upload, ChefHat, ShoppingCart, Timer
+  Clock, Lightbulb, Wand2, Upload, ChefHat, ShoppingCart, Timer, Lock
 } from 'lucide-react';
 
 
@@ -53,6 +53,64 @@ export default function App() {
   const [isDraggingDiary, setIsDraggingDiary] = useState(false);
   const [recipeBook, setRecipeBook] = useState<any>(null);
   const [isGeneratingRecipes, setIsGeneratingRecipes] = useState(false);
+
+  // --- Coach password gate ---
+  // null = still reading localStorage, '' = locked, otherwise the unlocked password.
+  const [appPassword, setAppPassword] = useState<string | null>(null);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [isCheckingPassword, setIsCheckingPassword] = useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setAppPassword(window.localStorage.getItem('za_coach_password') || '');
+  }, []);
+
+  const submitPassword = async (e) => {
+    e.preventDefault();
+    setIsCheckingPassword(true);
+    setPasswordError('');
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: passwordInput })
+      });
+      if (res.status === 401) {
+        setPasswordError('That password is not right. Try again.');
+        return;
+      }
+      if (!res.ok) {
+        setPasswordError(await res.text() || 'Something went wrong. Try again.');
+        return;
+      }
+      window.localStorage.setItem('za_coach_password', passwordInput);
+      setAppPassword(passwordInput);
+      setPasswordInput('');
+    } catch {
+      setPasswordError('Could not reach the server. Check your connection.');
+    } finally {
+      setIsCheckingPassword(false);
+    }
+  };
+
+  const lockApp = () => {
+    window.localStorage.removeItem('za_coach_password');
+    setAppPassword('');
+    setView('dashboard');
+  };
+
+  // Every request that costs money carries the password.
+  const authHeaders = (extra = {}) => ({ 'x-app-password': appPassword || '', ...extra });
+
+  // If the saved password stops working (e.g. it was changed in Vercel), clear it
+  // and send the coach back to the lock screen rather than showing a raw 401.
+  const handleAuthFailure = () => {
+    window.localStorage.removeItem('za_coach_password');
+    setAppPassword('');
+    setError('');
+    setView('dashboard');
+  };
 
   // --- Recipe book edit helpers ---
   const updateRecipe = (i, field, value) => {
@@ -180,7 +238,8 @@ export default function App() {
     try {
       const formData = new FormData();
       formData.append('file', convertFile);
-      const response = await fetch('/api/convert', { method: 'POST', body: formData });
+      const response = await fetch('/api/convert', { method: 'POST', headers: authHeaders(), body: formData });
+      if (response.status === 401) { handleAuthFailure(); return; }
       if (!response.ok) {
         const errorData = await response.text();
         throw new Error(`Conversion Error (${response.status}): ${errorData}`);
@@ -456,10 +515,11 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(payload)
       });
 
+      if (response.status === 401) { handleAuthFailure(); return; }
       if (!response.ok) {
         const errorData = await response.text();
         throw new Error(`API Error (${response.status}): ${errorData}`);
@@ -569,15 +629,16 @@ ${hasDiary ? `
         const fd = new FormData();
         fd.append('prompt', starterPrompt);
         diaryFiles.forEach(f => fd.append('diaryImages', f));
-        response = await fetch('/api/generate', { method: 'POST', body: fd });
+        response = await fetch('/api/generate', { method: 'POST', headers: authHeaders(), body: fd });
       } else {
         const payload = { contents: [{ parts: [{ text: starterPrompt }] }] };
         response = await fetch('/api/generate', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(payload)
         });
       }
+      if (response.status === 401) { handleAuthFailure(); return; }
       if (!response.ok) {
         const errorData = await response.text();
         throw new Error(`API Error (${response.status}): ${errorData}`);
@@ -700,9 +761,10 @@ ${hasDiary ? `
       const payload = { contents: [{ parts: [{ text: recipePrompt }] }] };
       const response = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(payload)
       });
+      if (response.status === 401) { handleAuthFailure(); return; }
       if (!response.ok) {
         const errorData = await response.text();
         throw new Error(`API Error (${response.status}): ${errorData}`);
@@ -734,6 +796,62 @@ ${hasDiary ? `
       setIsGeneratingRecipes(false);
     }
   };
+
+  // Still reading localStorage — render nothing rather than flashing the lock screen.
+  if (appPassword === null) {
+    return <div className="min-h-screen bg-zinc-50" />;
+  }
+
+  // Locked.
+  if (!appPassword) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-full h-full opacity-30 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-red-800 via-transparent to-transparent pointer-events-none"></div>
+
+        <div className="relative z-10 w-full max-w-sm">
+          <div className="flex flex-col items-center mb-10">
+            <div className="bg-white p-4 rounded-3xl shadow-xl shadow-red-900/20 mb-6">
+              <img src={LOGO_URL} alt="Z.A Training Logo" className="w-16 h-16 object-contain" />
+            </div>
+            <h3 className="text-red-500 font-bold tracking-[0.2em] uppercase mb-2 text-xs">Z.A Training & Education</h3>
+            <h1 className="text-3xl font-black text-white mb-2">Coach Portal</h1>
+            <p className="text-zinc-500 text-sm text-center">This tool is private. Enter your password to continue.</p>
+          </div>
+
+          <form onSubmit={submitPassword} className="bg-zinc-900/70 border border-zinc-800 rounded-3xl p-7 shadow-2xl backdrop-blur-sm">
+            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Password</label>
+            <input
+              type="password"
+              inputMode="numeric"
+              autoFocus
+              value={passwordInput}
+              onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(''); }}
+              className="w-full bg-black border border-zinc-700 rounded-xl px-4 py-3 text-white text-lg tracking-[0.3em] text-center outline-none focus:ring-2 focus:ring-red-600 focus:border-red-600 transition-all"
+              placeholder="••••••"
+            />
+
+            {passwordError && (
+              <p className="mt-3 text-red-400 text-sm font-medium text-center">{passwordError}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={isCheckingPassword || !passwordInput}
+              className="mt-5 w-full flex items-center justify-center bg-red-700 hover:bg-red-800 disabled:bg-zinc-800 disabled:text-zinc-600 text-white px-6 py-3 rounded-xl shadow-lg font-bold transition-all"
+            >
+              {isCheckingPassword ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Checking...</>
+              ) : (
+                'Unlock'
+              )}
+            </button>
+          </form>
+
+          <p className="text-zinc-600 text-xs text-center mt-6">You'll stay logged in on this device.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (view === 'generating') {
     const progress = Math.min(Math.round((streamedChars / 12000) * 100), 99);
@@ -1669,7 +1787,16 @@ ${hasDiary ? `
             </div>
             <span className="text-2xl font-black text-black tracking-tight">Z.A<span className="text-red-700">Training</span></span>
           </div>
-          <div className="text-xs font-bold text-zinc-400 tracking-widest uppercase border border-zinc-200 px-3 py-1.5 rounded-full">Coach Portal</div>
+          <div className="flex items-center gap-3">
+            <div className="text-xs font-bold text-zinc-400 tracking-widest uppercase border border-zinc-200 px-3 py-1.5 rounded-full">Coach Portal</div>
+            <button
+              onClick={lockApp}
+              title="Lock this device"
+              className="flex items-center text-xs font-bold text-zinc-500 hover:text-black border border-zinc-200 hover:border-zinc-400 px-3 py-1.5 rounded-full transition-colors"
+            >
+              <Lock className="w-3.5 h-3.5 mr-1.5" /> Lock
+            </button>
+          </div>
         </div>
       </nav>
 

@@ -3,6 +3,16 @@ import { NextRequest } from 'next/server';
 export const runtime = 'edge';
 
 export async function POST(request: NextRequest) {
+  // Gate the endpoint itself, not just the UI — otherwise anyone who finds the
+  // URL can spend Anthropic credits by posting straight to it.
+  const expectedPassword = process.env.APP_PASSWORD;
+  if (!expectedPassword) {
+    return new Response('APP_PASSWORD is not set on the server.', { status: 500 });
+  }
+  if (request.headers.get('x-app-password') !== expectedPassword) {
+    return new Response('Unauthorised', { status: 401 });
+  }
+
   const formData = await request.formData();
   const file = formData.get('file') as File;
 
