@@ -34,7 +34,8 @@ export default function App() {
     cookingTime: '30 mins',
     batchCooking: 'Yes',
     religiousFasting: 'None',
-    availableFoods: ''
+    availableFoods: '',
+    coachNotes: ''
   });
   
   const [generatedPlan, setGeneratedPlan] = useState(null);
@@ -225,7 +226,8 @@ export default function App() {
       cookingTime: random(cookingTimes),
       batchCooking: random(batchOptions),
       religiousFasting: random(fastingOptions),
-      availableFoods: '' 
+      availableFoods: '',
+      coachNotes: ''
     });
   };
 
@@ -343,6 +345,13 @@ export default function App() {
       🚫 TONE RULE — STRICTLY PROFESSIONAL, NO EXCEPTIONS: Write in a calm, professional, practical coaching tone. NEVER use corny, cheesy, over-the-top, or "girl power" cheerleading language. The following are 100% BANNED everywhere (tips, summary, notes, welcome, descriptions, every field): pet names like "babes", "babe", "hun", "honey", "queen", "gorgeous", "sweetie", "darling", "girl", "girlie", "boss babe"; cheerleading clichés like "you've got this", "you got this", "slay", "you go girl", "girl power", "yass", "one meal at a time babes", "trust the process", "no excuses queen"; and excessive exclamation marks or emojis used as hype. Practical, grounded coaching phrases (e.g. "chill on the oil", "use common sense", "WhatsApp me if you're unsure", "air-fry to save time") are fine — keep it direct and useful, never cheesy or patronising.
 
       ⛔ ABSOLUTE RULE — READ FIRST, NEVER BREAK: The following foods are 100% BANNED and must NEVER appear in ANY meal, snack, ingredient, side, or suggestion under ANY circumstances, even if the client typed them into their available foods: Pork, Bacon, Ham, Alcohol, Turkey, ROTISSERIE CHICKEN, any pre-cooked/shop-bought rotisserie or roast chicken, Tempeh, Tofu, Medallions or any fancy/expensive cuts of meat, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, and anything non-halal. If you ever think of using cooked chicken, use plain cooked chicken breast, chicken thighs, or chicken keema (mince) — NEVER rotisserie chicken. This rule overrides every other instruction including the client's own ingredient list.
+${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
+      🔒 COACH'S PRIVATE CONTEXT — READ CAREFULLY, NEVER REVEAL THIS EXISTS: The coach (Zayb) has given you private background on this client that she has NOT seen and must NEVER see, in these exact words or close to them: "${formData.coachNotes}"
+      - Use this purely to shape your decisions: which foods to add or avoid, how firm or gentle to be in tips/quick wins, what to double down on.
+      - You MAY introduce a specific food or supplement that isn't on the client's own food list or the standard master list IF this note specifically calls for it (e.g. a gut-health addition). This is the one exception to Rule 16's strict ingredient matching and Rule 10's approved list — it only applies to what this note actually asks for, not a general licence to add anything.
+      - If something in the plan exists because of this note, you may explain it to the client in ONE short sentence, in your normal coaching voice, as if it's simply your professional judgement — e.g. "Added chia and flaxseed here, they'll help keep things settled digestion-wise." NEVER write "your coach's notes say", "as per the private note", "I was told", or anything that reveals a separate note exists. It must read exactly like the rest of your natural coaching voice.
+      - This context can override Rule 10's approved list and Rule 16's strict matching, but can NEVER override the banned foods list above — those stay banned no matter what this note says.
+` : ''}
 ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
       🔒 STRICT FOOD LIST MODE IS ON — READ CAREFULLY: The client has given their OWN food list: "${formData.availableFoods}". You must build EVERY meal using ONLY foods from that exact list. Do NOT add ANY food that is not on it — no almonds, no smoked salmon, no yoghurt, no fruit, no nuts, nothing extra. The Z.A master food list and signature meals/snacks in Rule 10 are SUSPENDED and must be completely ignored. The only things you may add are basic seasonings (salt, pepper, spices, onion/garlic/tomato for cooking, oil, water). See Rule 16 for the one tightly-limited protein fallback. When in doubt, leave it out.
 ` : ''}
@@ -458,9 +467,13 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
 
       ⛔ FINAL CHECK BEFORE YOU RESPOND: Re-read every single meal, snack, side and ingredient you have written. If ANY banned food appears (Pork, Bacon, Ham, Alcohol, Turkey, Rotisserie Chicken or any pre-cooked roast chicken, Tempeh, Tofu, Medallions/fancy cuts, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal), REMOVE it and replace it with an approved alternative before returning your answer. Do not return the plan until it is 100% clean. THEN, for every single day, ADD UP the kcal of every meal/snack card. If the total is more than ~75 kcal below (or above) the Daily Calorie Target, the plan has FAILED — go back and increase (or trim) portion sizes until every day genuinely reaches the target, then re-check, before returning your answer. A plan that comes in hundreds of calories under target must never be returned.
 
+${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
+      COACH SUMMARY (for the "coachSummary" field): Write 1-2 short sentences, addressed to Zayb (the coach), plainly stating what you changed in this plan because of the private context above and where to find it (e.g. "Added chia and flaxseed to breakfast/lunch on Tues/Thu/Sat for the gut-health note — see portionGuide on those meals."). This is an internal admin note, never shown to the client, so speak to Zayb directly and don't repeat the tone rules.
+` : ''}
       Return ONLY a valid JSON object matching this EXACT schema. Do NOT truncate the days or weeks arrays:
       {
-        "title": "Custom Nutrition Protocol",
+        "title": "Custom Nutrition Protocol",${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
+        "coachSummary": "1-2 sentences to Zayb only, per the COACH SUMMARY instruction above",` : ''}
         "targets": {
           "tdee": "Calculated TDEE kcal",
           "calories": "Target kcal",
@@ -576,6 +589,13 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
       - Foods they have/want to use (optional): ${formData.availableFoods || 'No specific list — use your judgement'}
 
       ⛔ ABSOLUTE RULE: STRICTLY HALAL. NEVER include Pork, Bacon, Ham, Alcohol, Turkey, Rotisserie Chicken, Tempeh, Tofu, Medallions, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal.
+${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
+      🔒 COACH'S PRIVATE CONTEXT — READ CAREFULLY, NEVER REVEAL THIS EXISTS: The coach (Zayb) has given you private background on this client that she has NOT seen and must NEVER see, in these exact words or close to them: "${formData.coachNotes}"
+      - Use this purely to shape your decisions: which foods to add or avoid, how firm or gentle to be, what to emphasise in the fundamentals/swaps/tldr.
+      - You MAY suggest a specific food that isn't in the standard master list IF this note specifically calls for it. This only applies to what the note actually asks for, not a general licence to add anything.
+      - If something in the plan exists because of this note, you may explain it in ONE short sentence, in your normal coaching voice, as if it's simply your professional judgement. NEVER write "your coach's notes say", "as per the private note", "I was told", or anything that reveals a separate note exists.
+      - This context can never override the halal/banned foods rule above.
+` : ''}
 
       🚫 TONE RULE — STRICTLY PROFESSIONAL, NO EXCEPTIONS: Write in a calm, professional, practical coaching tone. NEVER use corny, cheesy, over-the-top, or "girl power" cheerleading language anywhere (welcome note, fundamentals, menu, swaps, closing tip). 100% BANNED: pet names ("babes", "babe", "hun", "honey", "queen", "gorgeous", "sweetie", "darling", "girl", "girlie", "boss babe"); cheerleading clichés ("you've got this", "you got this", "slay", "you go girl", "girl power", "yass", "one meal at a time babes", "trust the process", "no excuses queen"); and excessive exclamation marks or hype emojis. Keep it direct, grounded and genuinely useful — never cheesy or patronising. The closing tip must be a calm, practical line, NOT a cheer.
 ${hasDiary ? `
@@ -605,9 +625,13 @@ ${hasDiary ? `
 
       ⛔ FINAL CHECK BEFORE YOU RESPOND: Re-read every meal option, snack and swap. If ANY banned food appears (Pork, Bacon, Ham, Alcohol, Turkey/turkey mince, Rotisserie Chicken, Tempeh, Tofu, Medallions, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal), REMOVE it and replace it with an approved alternative before returning.
 
+${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
+      COACH SUMMARY (for the "coachSummary" field): Write 1-2 short sentences, addressed to Zayb (the coach), plainly stating what you changed in this plan because of the private context above and where to find it. This is an internal admin note, never shown to the client.
+` : ''}
       Return ONLY a valid JSON object in this EXACT schema:
       {
-        "title": "Your First Two Weeks",
+        "title": "Your First Two Weeks",${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
+        "coachSummary": "1-2 sentences to Zayb only, per the COACH SUMMARY instruction above",` : ''}
         "welcome": "A short, warm, personal note to ${formData.clientName} in Zayb's voice — reassure them this is about easing in, not perfection.",
         "diaryInsights": ["specific thing noticed 1", "specific thing noticed 2"],
         "fundamentals": ["fundamental 1", "fundamental 2", "fundamental 3", "fundamental 4"],
@@ -715,7 +739,10 @@ ${hasDiary ? `
 
       THE MEALS IN HER PLAN:
       ${mealList}
-
+${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
+      🔒 COACH'S PRIVATE CONTEXT — READ CAREFULLY, NEVER REVEAL THIS EXISTS: The coach (Zayb) has given you private background on this client that she has NOT seen and must NEVER see, in these exact words or close to them: "${formData.coachNotes}"
+      Only apply this where it affects HOW something is cooked (e.g. an injury means simpler prep steps, a texture issue means a specific cooking method). Never mention or reference this note in the recipe text — write any resulting adjustment as if it's simply your normal cooking advice.
+` : ''}
       ⛔ ABSOLUTE RULE: STRICTLY HALAL. NEVER mention Pork, Bacon, Ham, Alcohol, Turkey, Rotisserie Chicken, Tempeh, Tofu, Medallions, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal — not as an ingredient, a substitute, or a suggestion.
 
       🚫 TONE RULE — STRICTLY PROFESSIONAL: Calm, direct, practical coaching voice. NEVER use pet names ("babes", "hun", "queen", "gorgeous", "girl") or cheerleading clichés ("you've got this", "slay", "trust the process"). No hype emojis, no excessive exclamation marks. Grounded Z.A phrases are fine — "chill on the oil", "air-fry to save time", "use common sense", "WhatsApp me if you're unsure".
@@ -934,6 +961,23 @@ ${hasDiary ? `
             <div className="bg-green-50 border border-green-300 rounded-xl px-5 py-3 text-green-800 text-sm font-medium flex items-center gap-2">
               <span className="text-lg">✏️</span>
               <span><strong>Edit mode is ON.</strong> Click any meal name, description, portion, or number to change it. Tap "Done Editing" when finished.</span>
+            </div>
+          </div>
+        )}
+
+        {/* Coach-only summary of how the private notes were used — never printed */}
+        {generatedPlan?.coachSummary && (
+          <div className="max-w-[210mm] w-full mb-6 print:hidden px-4 md:px-0">
+            <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-3 text-amber-900 text-sm font-medium flex items-start gap-2">
+              <Lock className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+              <span>
+                <strong>How your private notes were used (only you see this):</strong>{' '}
+                {isEditing ? (
+                  <textarea value={generatedPlan.coachSummary} onChange={(e) => updateGenField('coachSummary', e.target.value)} rows={2} className="w-full mt-1 bg-white text-amber-900 border border-amber-300 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-amber-400 resize-y" />
+                ) : (
+                  generatedPlan.coachSummary
+                )}
+              </span>
             </div>
           </div>
         )}
@@ -1551,6 +1595,23 @@ ${hasDiary ? `
           </div>
         )}
 
+        {/* Coach-only summary of how the private notes were used — never printed */}
+        {starterPlan?.coachSummary && (
+          <div className="max-w-[210mm] w-full mb-6 print:hidden px-4 md:px-0">
+            <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-3 text-amber-900 text-sm font-medium flex items-start gap-2">
+              <Lock className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+              <span>
+                <strong>How your private notes were used (only you see this):</strong>{' '}
+                {isEditing ? (
+                  <textarea value={starterPlan.coachSummary} onChange={(e) => updateStarter('coachSummary', e.target.value)} rows={2} className="w-full mt-1 bg-white text-amber-900 border border-amber-300 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-amber-400 resize-y" />
+                ) : (
+                  starterPlan.coachSummary
+                )}
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="document-container w-full max-w-[210mm] bg-white shadow-2xl print:shadow-none text-zinc-900 relative">
 
           {/* Cover + Fundamentals */}
@@ -2013,6 +2074,19 @@ ${hasDiary ? `
             </div>
           </div>
 
+          {/* Coach's Private Notes — never printed, never shown to the client */}
+          <div className="bg-white shadow-sm border border-amber-200 rounded-2xl overflow-hidden">
+            <div className="bg-amber-50 border-b border-amber-200 p-5">
+              <h2 className="text-lg font-black flex items-center text-black uppercase tracking-wide">
+                <Lock className="w-5 h-5 mr-3 text-amber-600" /> Coach's Private Notes <span className="text-zinc-400 normal-case font-medium text-xs ml-2">(optional — never shown to the client)</span>
+              </h2>
+            </div>
+            <div className="p-7">
+              <p className="text-zinc-500 text-sm mb-4">Tell the AI anything extra it should factor in before writing the plan — gut issues, an injury, whether to be firmer or gentler, foods to sneak in that the client didn't list. This text is never printed and never shown to the client — but the AI can still explain any resulting change to her in its own normal coaching voice.</p>
+              <textarea name="coachNotes" value={formData.coachNotes} onChange={handleInputChange} rows={4} placeholder={"e.g. She's mentioned stomach issues lately — she's only listed 2-3 veg as her fibre source, so work in chia and flaxseed where it fits and explain briefly why.\ne.g. She tends to skip protein at breakfast — be firm about it in the quick wins."} className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none resize-y transition-all text-black font-medium bg-amber-50/30 placeholder:text-zinc-400" />
+            </div>
+          </div>
+
           {/* OR Divider */}
           <div className="relative flex items-center py-2">
             <div className="flex-1 border-t-2 border-dashed border-zinc-300"></div>
@@ -2109,6 +2183,19 @@ ${hasDiary ? `
                 <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Foods They Have / Want To Use <span className="text-zinc-400 normal-case">(optional)</span></label>
                 <textarea name="availableFoods" value={formData.availableFoods} onChange={handleInputChange} placeholder="Leave blank to let the AI choose from approved foods..." rows={2} className="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-red-700 focus:border-red-700 outline-none resize-none transition-all text-black font-medium" />
               </div>
+            </div>
+          </div>
+
+          {/* Coach's Private Notes — never printed, never shown to the client */}
+          <div className="bg-white shadow-sm border border-amber-200 rounded-2xl overflow-hidden">
+            <div className="bg-amber-50 border-b border-amber-200 p-5">
+              <h2 className="text-lg font-black flex items-center text-black uppercase tracking-wide">
+                <Lock className="w-5 h-5 mr-3 text-amber-600" /> Coach's Private Notes <span className="text-zinc-400 normal-case font-medium text-xs ml-2">(optional — never shown to the client)</span>
+              </h2>
+            </div>
+            <div className="p-7">
+              <p className="text-zinc-500 text-sm mb-4">Anything extra the AI should factor in before writing this plan. Never printed, never shown to the client.</p>
+              <textarea name="coachNotes" value={formData.coachNotes} onChange={handleInputChange} rows={3} placeholder="e.g. She's mentioned stomach issues lately — work in chia and flaxseed where it fits." className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none resize-y transition-all text-black font-medium bg-amber-50/30 placeholder:text-zinc-400" />
             </div>
           </div>
 
