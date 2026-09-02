@@ -134,8 +134,8 @@ export default function App() {
   const updateStarterFundamental = (i, value) => {
     setStarterPlan(prev => { const n = structuredClone(prev); n.fundamentals[i] = value; return n; });
   };
-  const updateStarterMenu = (section, i, value) => {
-    setStarterPlan(prev => { const n = structuredClone(prev); n.menu[section][i] = value; return n; });
+  const updateStarterMenu = (section, i, field, value) => {
+    setStarterPlan(prev => { const n = structuredClone(prev); n.menu[section][i][field] = value; return n; });
   };
   const updateStarterSwap = (i, key, value) => {
     setStarterPlan(prev => { const n = structuredClone(prev); n.swaps[i][key] = value; return n; });
@@ -145,6 +145,9 @@ export default function App() {
   };
   const updateStarterInsight = (i, value) => {
     setStarterPlan(prev => { const n = structuredClone(prev); n.diaryInsights[i] = value; return n; });
+  };
+  const updateStarterDietSnapshot = (key, value) => {
+    setStarterPlan(prev => { const n = structuredClone(prev); if (!n.currentDietSnapshot) n.currentDietSnapshot = {}; n.currentDietSnapshot[key] = value || null; return n; });
   };
   const updateStarterTldr = (i, value) => {
     setStarterPlan(prev => { const n = structuredClone(prev); n.tldr[i] = value; return n; });
@@ -604,8 +607,9 @@ ${hasDiary ? `
       2. Identify 3-5 SPECIFIC, EVIDENCE-BASED weaknesses tied to what you actually saw in the diary — not generic advice. Reference their real habits (e.g. "Your breakfast is mostly toast and jam with no protein" not "eat more protein").
       3. Build the "Mix & Match" menu to stay AS CLOSE AS POSSIBLE to what they already eat — same core meals, cuisine, and structure they're used to. Do NOT hand them a totally different menu. Only adjust the specific weak points you found (e.g. add a protein source to their existing breakfast, swap their existing sugary snack for a similar-feeling but better one, resize an oversized portion). The goal is minimum disruption to their current routine, maximum fix to the real gaps.
       4. Fill "diaryInsights" with those 3-5 specific things you noticed, written directly to the client in Zayb's voice (e.g. "Your breakfast is missing protein most days — we're adding an easy protein source without changing what you're used to eating.").
+      5. Fill "currentDietSnapshot" — one plain, neutral sentence per meal type (breakfast/lunch/dinner/snacks) describing what you actually saw them eating right now. This is shown to the client BEFORE the insights, as a "here's what we saw" mirror-back — so it must be accurate and specific to their real diary, never generic. If the diary genuinely doesn't show a particular meal type clearly (e.g. no snacks visible anywhere), set that one field to null rather than guessing or inventing detail. Do NOT editorialise here (no "which is a problem" commentary) — that judgement belongs in "diaryInsights", not here. Just state what you saw, plainly, e.g. "Usually toast and jam, sometimes skipped." Write it directly to the client ("You typically have..." or just the plain observation, matching the tone of the rest of the document).
 ` : `
-      No food diary was provided — set "diaryInsights" to an empty array [] and build the menu using your normal judgement and the client's cuisine/preferences below.
+      No food diary was provided — set "diaryInsights" to an empty array [] and "currentDietSnapshot" to { "breakfast": null, "lunch": null, "dinner": null, "snacks": null }. Build the menu using your normal judgement and the client's cuisine/preferences below.
 `}
       THE FOUR FUNDAMENTALS (rewrite each in your warm, direct Z.A Training voice, personalised to this client${hasDiary ? ' and what you saw in their diary' : ''}):
       1. Reduce junk food now, with the aim of cutting it right down over time.
@@ -613,7 +617,8 @@ ${hasDiary ? `
       3. Build this up gradually — small steady steps, not all at once.
       4. Get one to two lean protein sources in every day until it becomes second nature.
 
-      MIX & MATCH MENU: Give EXACTLY 5 options each for breakfast, lunch, dinner, and snacks. The client picks whichever they fancy each day — they are NOT assigned to days. Each option = a short meal name plus a simple portion in plain English (e.g. "Eggs on toast — 2 eggs, 1 brown toast, handful spinach"). Every option must have a clear protein. Use the client's cuisine and the Z.A Inspiration Bank style (protein-first, "1.5 fistful" desi portions, Greek yoghurt to bump protein, etc.). Snacks should be simple and protein-friendly. NO calorie numbers anywhere.
+      MIX & MATCH MENU: Give EXACTLY 5 options each for breakfast, lunch, dinner, and snacks. The client picks whichever they fancy each day — they are NOT assigned to days. Each option is an object with a "meal" field (a short meal name plus a simple portion in plain English, e.g. "Eggs on toast — 2 eggs, 1 brown toast, handful spinach") and a "basedOn" field. Every option must have a clear protein. Use the client's cuisine and the Z.A Inspiration Bank style (protein-first, "1.5 fistful" desi portions, Greek yoghurt to bump protein, etc.). Snacks should be simple and protein-friendly. NO calorie numbers anywhere.
+      "basedOn" FIELD RULE: ${hasDiary ? `Only fill "basedOn" when this specific option is a direct, recognisable evolution of something you actually saw in their diary (e.g. "Instead of your usual toast & jam" for an upgraded breakfast, or "A lighter version of your usual biryani night" for a dinner option). Write it short — under 8 words, starting "Instead of..." or similar. Do NOT force this onto every option — only tag the ones genuinely tied to a real habit you saw. The other options (fresh variety, different days) should have "basedOn": null. Aim for roughly 2-4 tagged options per meal type out of the 5, not all 5 and not zero — enough that it's obviously personalised, not so much it feels repetitive or fake.` : `No diary was provided, so set "basedOn" to null on every single option.`}
 
       SMARTER SWAPS: Give 6 simple "swap this for that" tips in Zayb's style (e.g. white bread → brown bread; fried → air-fried; paratha → chapati; sugary drink → sugar-free; full-fat → light; lamb mince → chicken mince). Each with a very short reason.${hasDiary ? ' Where possible, base swaps on foods you actually saw in their diary.' : ''} NEVER suggest turkey, turkey mince, or any banned food as a swap.
 
@@ -633,13 +638,14 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
         "title": "Your First Two Weeks",${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
         "coachSummary": "1-2 sentences to Zayb only, per the COACH SUMMARY instruction above",` : ''}
         "welcome": "A short, warm, personal note to ${formData.clientName} in Zayb's voice — reassure them this is about easing in, not perfection.",
+        "currentDietSnapshot": { "breakfast": "string or null", "lunch": "string or null", "dinner": "string or null", "snacks": "string or null" },
         "diaryInsights": ["specific thing noticed 1", "specific thing noticed 2"],
         "fundamentals": ["fundamental 1", "fundamental 2", "fundamental 3", "fundamental 4"],
         "menu": {
-          "breakfast": ["option 1", "option 2", "option 3", "option 4", "option 5"],
-          "lunch": ["option 1", "option 2", "option 3", "option 4", "option 5"],
-          "dinner": ["option 1", "option 2", "option 3", "option 4", "option 5"],
-          "snacks": ["option 1", "option 2", "option 3", "option 4", "option 5"]
+          "breakfast": [{"meal": "option 1", "basedOn": "string or null"}, {"meal": "option 2", "basedOn": null}, {"meal": "option 3", "basedOn": null}, {"meal": "option 4", "basedOn": null}, {"meal": "option 5", "basedOn": null}],
+          "lunch": [{"meal": "option 1", "basedOn": null}, {"meal": "option 2", "basedOn": null}, {"meal": "option 3", "basedOn": null}, {"meal": "option 4", "basedOn": null}, {"meal": "option 5", "basedOn": null}],
+          "dinner": [{"meal": "option 1", "basedOn": null}, {"meal": "option 2", "basedOn": null}, {"meal": "option 3", "basedOn": null}, {"meal": "option 4", "basedOn": null}, {"meal": "option 5", "basedOn": null}],
+          "snacks": [{"meal": "option 1", "basedOn": null}, {"meal": "option 2", "basedOn": null}, {"meal": "option 3", "basedOn": null}, {"meal": "option 4", "basedOn": null}, {"meal": "option 5", "basedOn": null}]
         },
         "swaps": [{"from": "White bread", "to": "Brown bread", "why": "More fibre, keeps you fuller"}],
         "tldr": ["action point 1", "action point 2", "action point 3", "action point 4"],
@@ -649,13 +655,16 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
 
     try {
       let response: Response;
+      // Sonnet, not the app's usual Haiku — this call has to read diary photos
+      // carefully and never guess, so it gets the more careful model.
       if (hasDiary) {
         const fd = new FormData();
         fd.append('prompt', starterPrompt);
+        fd.append('model', 'claude-sonnet-5');
         diaryFiles.forEach(f => fd.append('diaryImages', f));
         response = await fetch('/api/generate', { method: 'POST', headers: authHeaders(), body: fd });
       } else {
-        const payload = { contents: [{ parts: [{ text: starterPrompt }] }] };
+        const payload = { contents: [{ parts: [{ text: starterPrompt }] }], model: 'claude-sonnet-5' };
         response = await fetch('/api/generate', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
@@ -1642,6 +1651,28 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
                 )}
               </div>
             )}
+            {starterPlan.currentDietSnapshot && (isEditing || Object.values(starterPlan.currentDietSnapshot).some(v => v)) && (
+              <div className="relative z-10 mt-8">
+                <h2 className="text-2xl font-bold text-white mb-5 flex items-center"><Utensils className="w-6 h-6 mr-3 text-red-500 shrink-0" />What You're Eating Right Now</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { key: 'breakfast', label: 'Breakfast' },
+                    { key: 'lunch', label: 'Lunch' },
+                    { key: 'dinner', label: 'Dinner' },
+                    { key: 'snacks', label: 'Snacks' },
+                  ].filter(m => isEditing || starterPlan.currentDietSnapshot[m.key]).map(m => (
+                    <div key={m.key} className="bg-black/50 p-4 rounded-xl border border-zinc-800">
+                      <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1.5">{m.label}</p>
+                      {isEditing ? (
+                        <textarea value={starterPlan.currentDietSnapshot[m.key] || ''} onChange={(e) => updateStarterDietSnapshot(m.key, e.target.value)} rows={2} placeholder="Leave blank if not clear from the diary" className="w-full bg-zinc-800 text-zinc-100 text-sm leading-snug border border-zinc-600 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-red-500 resize-y" />
+                      ) : (
+                        <p className="text-zinc-300 text-sm leading-snug">{starterPlan.currentDietSnapshot[m.key]}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {Array.isArray(starterPlan.diaryInsights) && (starterPlan.diaryInsights.length > 0 || isEditing) && (
               <div className="relative z-10 mt-8">
                 <h2 className="text-2xl font-bold text-white mb-5 flex items-center"><HeartPulse className="w-6 h-6 mr-3 text-red-500 shrink-0" />What We Noticed</h2>
@@ -1717,14 +1748,21 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
                     ) : s.label}
                   </h3>
                   <ul className="space-y-3">
-                    {(Array.isArray(menu[s.key]) ? menu[s.key] : []).map((opt: string, i: number) => (
+                    {(Array.isArray(menu[s.key]) ? menu[s.key] : []).map((opt: any, i: number) => (
                       <li key={i} className="flex items-start text-zinc-700 text-sm font-medium">
                         <div className="w-1.5 h-1.5 bg-red-600 rounded-full mr-3 mt-1.5 shrink-0"></div>
-                        {isEditing ? (
-                          <textarea value={opt || ''} onChange={(e) => updateStarterMenu(s.key, i, e.target.value)} rows={2} className="w-full text-zinc-700 text-sm font-medium border border-zinc-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400 resize-y bg-white" />
-                        ) : (
-                          opt
-                        )}
+                        <div className="w-full">
+                          {isEditing ? (
+                            <input value={opt?.basedOn || ''} onChange={(e) => updateStarterMenu(s.key, i, 'basedOn', e.target.value || null)} placeholder="Based on (optional) — e.g. Instead of your usual toast & jam" className="w-full text-[11px] font-bold text-red-700 uppercase tracking-wide mb-1 border border-red-200 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400 bg-red-50" />
+                          ) : opt?.basedOn ? (
+                            <p className="text-[11px] font-bold text-red-700 uppercase tracking-wide mb-0.5">{opt.basedOn}</p>
+                          ) : null}
+                          {isEditing ? (
+                            <textarea value={opt?.meal || ''} onChange={(e) => updateStarterMenu(s.key, i, 'meal', e.target.value)} rows={2} className="w-full text-zinc-700 text-sm font-medium border border-zinc-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-red-400 resize-y bg-white" />
+                          ) : (
+                            opt?.meal
+                          )}
+                        </div>
                       </li>
                     ))}
                   </ul>

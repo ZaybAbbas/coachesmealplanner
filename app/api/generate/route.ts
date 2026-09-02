@@ -28,6 +28,13 @@ export async function POST(request: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const contentType = request.headers.get('content-type') || '';
 
+  // Most calls (the full plan, the recipe book) run fine on Haiku. The Starter
+  // Plan's food-diary reading needs a model that's careful with photos and
+  // won't guess — the caller opts into that with `model`. Whitelisted so a
+  // client can't smuggle an arbitrary model string through this field.
+  const ALLOWED_MODELS = ['claude-haiku-4-5', 'claude-sonnet-5'];
+  let requestedModel = 'claude-haiku-4-5';
+
   let content: any;
 
   if (contentType.includes('multipart/form-data')) {
@@ -35,6 +42,8 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const prompt = (formData.get('prompt') as string) || '';
     const images = formData.getAll('diaryImages') as File[];
+    const modelField = formData.get('model') as string | null;
+    if (modelField && ALLOWED_MODELS.includes(modelField)) requestedModel = modelField;
 
     const imageBlocks = await Promise.all(images.map(async (file) => ({
       type: 'image',
@@ -49,10 +58,11 @@ export async function POST(request: NextRequest) {
   } else {
     const body = await request.json();
     content = body.contents?.[0]?.parts?.[0]?.text || '';
+    if (body.model && ALLOWED_MODELS.includes(body.model)) requestedModel = body.model;
   }
 
   const payload = {
-    model: 'claude-haiku-4-5',
+    model: requestedModel,
     max_tokens: 16000,
     stream: true,
     messages: [
