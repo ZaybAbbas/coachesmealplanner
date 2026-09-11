@@ -5,7 +5,7 @@ import {
   User, Calendar, Target, 
   FileText, Download, ArrowLeft, Loader2, CheckCircle2,
   Utensils, Activity, AlertCircle, Globe, HeartPulse,
-  Clock, Lightbulb, Wand2, Upload, ChefHat, ShoppingCart, Timer, Lock
+  Clock, Lightbulb, Wand2, Upload, ChefHat, ShoppingCart, Timer, Lock, FlaskConical
 } from 'lucide-react';
 
 
@@ -35,7 +35,8 @@ export default function App() {
     batchCooking: 'Yes',
     religiousFasting: 'None',
     availableFoods: '',
-    coachNotes: ''
+    coachNotes: '',
+    researchNotes: ''
   });
   
   const [generatedPlan, setGeneratedPlan] = useState(null);
@@ -230,7 +231,8 @@ export default function App() {
       batchCooking: random(batchOptions),
       religiousFasting: random(fastingOptions),
       availableFoods: '',
-      coachNotes: ''
+      coachNotes: '',
+      researchNotes: ''
     });
   };
 
@@ -295,6 +297,10 @@ export default function App() {
     // on the fast/cheap path with no search and no model switch.
     const needsEvidenceCheck = formData.hormonalStatus !== 'Regular cycle' ||
       (formData.medicalFlags && formData.medicalFlags.trim().toLowerCase() !== 'none');
+    // Pasted research already did the searching — this just needs the more careful
+    // model to weave it in well. No web_search tool here, that'd be a redundant cost.
+    const hasResearchNotes = formData.researchNotes && formData.researchNotes.trim() !== '';
+    const needsSmarterModel = needsEvidenceCheck || hasResearchNotes;
 
     // If a manual calorie target is given, work out a concrete per-meal kcal budget
     // in code and hand it to the AI as exact numbers to hit. Asking the AI to total a
@@ -381,7 +387,8 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
       7. Keep within the cooking time limit.
       8. HORMONES/MEDICAL: If perimenopausal/menopausal, increase calcium and prioritise protein. If PCOS/Insulin Resistance, reduce refined carbs, use low-GI, pair carbs with protein/fat.
       8a. UK OFFICIAL GUIDANCE BACKBONE: Every plan must stay consistent with UK official dietary guidance (the NHS Eatwell Guide and SACN government advice) as a baseline — base meals on higher-fibre starchy carbs, at least 5 portions of fruit/veg a day, include oily fish where the client's cuisine and preferences allow it, choose unsaturated fats in small amounts, keep saturated fat/salt/added sugar low, and aim for 30g fibre a day. Where a more specific Z.A rule above conflicts with this (calorie deficit maths, halal requirements, South Asian cuisine-first, the master food list), the more specific Z.A rule always wins — this is a baseline floor, not an override.${needsEvidenceCheck ? `
-      8b. CURRENT EVIDENCE CHECK — YOU HAVE WEB SEARCH ACCESS: This client's hormonal status or medical flags (${formData.hormonalStatus}${formData.medicalFlags && formData.medicalFlags.trim().toLowerCase() !== 'none' ? `, ${formData.medicalFlags}` : ''}) mean it's worth confirming your nutrition approach against current guidance before finalising. Use the web_search tool (2 searches maximum) to check current, credible guidance specifically for this condition (e.g. "PCOS nutrition guidelines" or "menopause diet fibre protein UK NHS"). Prefer NHS, SACN, or peer-reviewed/reputable sources. Only search for this specific medical/hormonal angle — do NOT search for general recipe ideas, food lists, or anything already covered by your rules above. If search results confirm your existing approach, proceed as normal. If they suggest a genuinely better adjustment, apply it and reflect it naturally in the plan's tips or quick wins, in your normal coaching voice — never mention "I searched the internet" or cite a source by name to the client.` : ''}
+      8b. CURRENT EVIDENCE CHECK — YOU HAVE WEB SEARCH ACCESS: This client's hormonal status or medical flags (${formData.hormonalStatus}${formData.medicalFlags && formData.medicalFlags.trim().toLowerCase() !== 'none' ? `, ${formData.medicalFlags}` : ''}) mean it's worth confirming your nutrition approach against current guidance before finalising. Use the web_search tool (2 searches maximum) to check current, credible guidance specifically for this condition (e.g. "PCOS nutrition guidelines" or "menopause diet fibre protein UK NHS"). Prefer NHS, SACN, or peer-reviewed/reputable sources. Only search for this specific medical/hormonal angle — do NOT search for general recipe ideas, food lists, or anything already covered by your rules above. If search results confirm your existing approach, proceed as normal. If they suggest a genuinely better adjustment, apply it and reflect it naturally in the plan's tips or quick wins, in your normal coaching voice — never mention "I searched the internet" or cite a source by name to the client.` : ''}${hasResearchNotes ? `
+      8c. COACH'S RESEARCH-BACKED APPROACH — TREAT AS AUTHORITATIVE: Zayb has already researched the best evidence-based approach for this specific client (using a dedicated research consultation, separate from this tool) and provided this conclusion: "${formData.researchNotes}". This is not a casual note — treat it as the primary directional guidance for this client's nutritional approach, more heavily than your own general judgement on the condition described. Use it to shape food choices, what to prioritise or avoid, and the overall angle of the plan. Weave it into the plan naturally in your own coaching voice — reference it as your own professional judgement (e.g. as part of the description, tips, or quick wins), never say "the coach researched this" or "according to the notes provided". This still never overrides the banned foods list or halal requirement above — if the research conflicts with those, the banned foods rule always wins.` : ''}
       9. Z.A TRAINING TONE: Keep language highly practical, direct, and jargon-free. Written to the client. Incorporate my signature coaching tone (e.g., "Chill on the oil!", "Comfort food, don't overdo it", "Use common sense", "Air-fry to save time", "Always WhatsApp me if you are ever unsure").
       10. Z.A TRAINING MASTER FINGERPRINT:
 
@@ -535,10 +542,13 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
         }
       }
     };
-    // Medical/hormonal clients get the more careful model plus live web search to
-    // check current guidance. Standard clients stay on the fast/cheap default.
-    if (needsEvidenceCheck) {
+    // Medical/hormonal clients (and anyone with pasted research notes) get the more
+    // careful model. Live web search is only switched on for the medical/hormonal
+    // case — when research notes are pasted in, the searching is already done.
+    if (needsSmarterModel) {
       payload.model = 'claude-sonnet-5';
+    }
+    if (needsEvidenceCheck) {
       payload.webSearch = true;
     }
 
@@ -2136,6 +2146,19 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
             <div className="p-7">
               <p className="text-zinc-500 text-sm mb-4">Tell the AI anything extra it should factor in before writing the plan — gut issues, an injury, whether to be firmer or gentler, foods to sneak in that the client didn't list. This text is never printed and never shown to the client — but the AI can still explain any resulting change to her in its own normal coaching voice.</p>
               <textarea name="coachNotes" value={formData.coachNotes} onChange={handleInputChange} rows={4} placeholder={"e.g. She's mentioned stomach issues lately — she's only listed 2-3 veg as her fibre source, so work in chia and flaxseed where it fits and explain briefly why.\ne.g. She tends to skip protein at breakfast — be firm about it in the quick wins."} className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none resize-y transition-all text-black font-medium bg-amber-50/30 placeholder:text-zinc-400" />
+            </div>
+          </div>
+
+          {/* Research-Backed Approach — paste the conclusion from your Claude research chat */}
+          <div className="bg-white shadow-sm border border-indigo-200 rounded-2xl overflow-hidden">
+            <div className="bg-indigo-50 border-b border-indigo-200 p-5">
+              <h2 className="text-lg font-black flex items-center text-black uppercase tracking-wide">
+                <FlaskConical className="w-5 h-5 mr-3 text-indigo-600" /> Research-Backed Approach <span className="text-zinc-400 normal-case font-medium text-xs ml-2">(optional — for clients who need extra direction)</span>
+              </h2>
+            </div>
+            <div className="p-7">
+              <p className="text-zinc-500 text-sm mb-4">For a client whose situation needs a bit more thought (an injury, a specific condition), ask your Z.A Training Research Claude project for the evidence-based approach, then paste its "PASTE THIS INTO THE MEAL PLANNER" answer here. The AI treats this as the main direction for the plan — above its own general judgement, never below the banned foods rule. Leave blank for a normal client; this isn't something you'll use every time.</p>
+              <textarea name="researchNotes" value={formData.researchNotes} onChange={handleInputChange} rows={5} placeholder="Paste the copy-ready summary from your Claude research chat here..." className="w-full px-4 py-3 rounded-xl border border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y transition-all text-black font-medium bg-indigo-50/30 placeholder:text-zinc-400" />
             </div>
           </div>
 
