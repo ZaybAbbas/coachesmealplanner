@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
   // client can't smuggle an arbitrary model string through this field.
   const ALLOWED_MODELS = ['claude-haiku-4-5', 'claude-sonnet-5'];
   let requestedModel = 'claude-haiku-4-5';
+  let webSearchRequested = false;
 
   let content: any;
 
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest) {
     const images = formData.getAll('diaryImages') as File[];
     const modelField = formData.get('model') as string | null;
     if (modelField && ALLOWED_MODELS.includes(modelField)) requestedModel = modelField;
+    webSearchRequested = formData.get('webSearch') === 'true';
 
     const imageBlocks = await Promise.all(images.map(async (file) => ({
       type: 'image',
@@ -59,9 +61,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     content = body.contents?.[0]?.parts?.[0]?.text || '';
     if (body.model && ALLOWED_MODELS.includes(body.model)) requestedModel = body.model;
+    webSearchRequested = body.webSearch === true;
   }
 
-  const payload = {
+  const payload: any = {
     model: requestedModel,
     max_tokens: 16000,
     stream: true,
@@ -69,6 +72,14 @@ export async function POST(request: NextRequest) {
       { role: 'user', content }
     ]
   };
+
+  // Live evidence-checking for medical/hormonal clients. Only paired with Sonnet —
+  // Haiku isn't on the model list this web search version supports, and this is
+  // exactly the kind of call that needs the more careful model anyway. `max_uses`
+  // is enforced by Anthropic itself, so a run can never exceed ~2 searches (~2p).
+  if (webSearchRequested && requestedModel === 'claude-sonnet-5') {
+    payload.tools = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 2 }];
+  }
 
   const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',

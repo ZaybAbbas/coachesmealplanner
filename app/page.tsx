@@ -290,6 +290,12 @@ export default function App() {
 
     const aiWeeks = 1;
 
+    // Only worth the extra cost/care when there's a hormonal or medical angle to get
+    // right (PCOS, menopause, etc.) — a plain "Regular cycle, no flags" client stays
+    // on the fast/cheap path with no search and no model switch.
+    const needsEvidenceCheck = formData.hormonalStatus !== 'Regular cycle' ||
+      (formData.medicalFlags && formData.medicalFlags.trim().toLowerCase() !== 'none');
+
     // If a manual calorie target is given, work out a concrete per-meal kcal budget
     // in code and hand it to the AI as exact numbers to hit. Asking the AI to total a
     // whole day itself is unreliable — giving it a per-meal number to match is far better.
@@ -374,6 +380,8 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
       6. BATCH COOKING vs FAMILY COOKING — CRITICAL DIFFERENCE: Batch cooking = cooking multiple days' meals in one session for the CLIENT ONLY. This does NOT change her individual portion sizes. Family cooking = cooking one meal for multiple people. These are completely separate concepts. NEVER multiply portion sizes for both simultaneously.
       7. Keep within the cooking time limit.
       8. HORMONES/MEDICAL: If perimenopausal/menopausal, increase calcium and prioritise protein. If PCOS/Insulin Resistance, reduce refined carbs, use low-GI, pair carbs with protein/fat.
+      8a. UK OFFICIAL GUIDANCE BACKBONE: Every plan must stay consistent with UK official dietary guidance (the NHS Eatwell Guide and SACN government advice) as a baseline — base meals on higher-fibre starchy carbs, at least 5 portions of fruit/veg a day, include oily fish where the client's cuisine and preferences allow it, choose unsaturated fats in small amounts, keep saturated fat/salt/added sugar low, and aim for 30g fibre a day. Where a more specific Z.A rule above conflicts with this (calorie deficit maths, halal requirements, South Asian cuisine-first, the master food list), the more specific Z.A rule always wins — this is a baseline floor, not an override.${needsEvidenceCheck ? `
+      8b. CURRENT EVIDENCE CHECK — YOU HAVE WEB SEARCH ACCESS: This client's hormonal status or medical flags (${formData.hormonalStatus}${formData.medicalFlags && formData.medicalFlags.trim().toLowerCase() !== 'none' ? `, ${formData.medicalFlags}` : ''}) mean it's worth confirming your nutrition approach against current guidance before finalising. Use the web_search tool (2 searches maximum) to check current, credible guidance specifically for this condition (e.g. "PCOS nutrition guidelines" or "menopause diet fibre protein UK NHS"). Prefer NHS, SACN, or peer-reviewed/reputable sources. Only search for this specific medical/hormonal angle — do NOT search for general recipe ideas, food lists, or anything already covered by your rules above. If search results confirm your existing approach, proceed as normal. If they suggest a genuinely better adjustment, apply it and reflect it naturally in the plan's tips or quick wins, in your normal coaching voice — never mention "I searched the internet" or cite a source by name to the client.` : ''}
       9. Z.A TRAINING TONE: Keep language highly practical, direct, and jargon-free. Written to the client. Incorporate my signature coaching tone (e.g., "Chill on the oil!", "Comfort food, don't overdo it", "Use common sense", "Air-fry to save time", "Always WhatsApp me if you are ever unsure").
       10. Z.A TRAINING MASTER FINGERPRINT:
 
@@ -518,7 +526,7 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
       }
     `;
 
-   const payload = {
+   const payload: any = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
         maxOutputTokens: 16384,
@@ -527,6 +535,12 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
         }
       }
     };
+    // Medical/hormonal clients get the more careful model plus live web search to
+    // check current guidance. Standard clients stay on the fast/cheap default.
+    if (needsEvidenceCheck) {
+      payload.model = 'claude-sonnet-5';
+      payload.webSearch = true;
+    }
 
     try {
       const response = await fetch('/api/generate', {
