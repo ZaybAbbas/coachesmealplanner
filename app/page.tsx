@@ -292,15 +292,11 @@ export default function App() {
 
     const aiWeeks = 1;
 
-    // Only worth the extra cost/care when there's a hormonal or medical angle to get
-    // right (PCOS, menopause, etc.) — a plain "Regular cycle, no flags" client stays
-    // on the fast/cheap path with no search and no model switch.
+    // Hormonal/medical clients get a live web search to check current guidance.
+    // A plain "Regular cycle, no flags" client skips it.
     const needsEvidenceCheck = formData.hormonalStatus !== 'Regular cycle' ||
       (formData.medicalFlags && formData.medicalFlags.trim().toLowerCase() !== 'none');
-    // Pasted research already did the searching — this just needs the more careful
-    // model to weave it in well. No web_search tool here, that'd be a redundant cost.
     const hasResearchNotes = formData.researchNotes && formData.researchNotes.trim() !== '';
-    const needsSmarterModel = needsEvidenceCheck || hasResearchNotes;
 
     // If a manual calorie target is given, work out a concrete per-meal kcal budget
     // in code and hand it to the AI as exact numbers to hit. Asking the AI to total a
@@ -542,12 +538,8 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
         }
       }
     };
-    // Medical/hormonal clients (and anyone with pasted research notes) get the more
-    // careful model. Live web search is only switched on for the medical/hormonal
-    // case — when research notes are pasted in, the searching is already done.
-    if (needsSmarterModel) {
-      payload.model = 'claude-sonnet-5';
-    }
+    // The full plan always stays on the default fast model. Sonnet took over 5
+    // minutes to write a 7-day plan, and Vercel kills any request at 300s.
     if (needsEvidenceCheck) {
       payload.webSearch = true;
     }

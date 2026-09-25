@@ -73,12 +73,11 @@ export async function POST(request: NextRequest) {
     ]
   };
 
-  // Live evidence-checking for medical/hormonal clients. Only paired with Sonnet —
-  // Haiku isn't on the model list this web search version supports, and this is
-  // exactly the kind of call that needs the more careful model anyway. `max_uses`
-  // is enforced by Anthropic itself, so a run can never exceed ~2 searches (~2p).
-  if (webSearchRequested && requestedModel === 'claude-sonnet-5') {
-    payload.tools = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 2 }];
+  // Live evidence-checking for medical/hormonal clients. The basic search version
+  // works on Haiku (the dynamic-filtering versions don't). `max_uses` is enforced
+  // by Anthropic, so a run never exceeds 2 searches (~2p).
+  if (webSearchRequested) {
+    payload.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }];
   }
 
   const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
