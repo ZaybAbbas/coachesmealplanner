@@ -7,6 +7,7 @@ import {
   Utensils, Activity, AlertCircle, Globe, HeartPulse,
   Clock, Lightbulb, Wand2, Upload, ChefHat, ShoppingCart, Timer, Lock, FlaskConical
 } from 'lucide-react';
+import { MEAL_SENSE_RULES, TASTE_TIP_RULES, buildCheckerPrompt, parseCheckerResponse, applyCheckerFixes } from '../lib/mealCheck';
 
 
 const LOGO_URL = "https://firebasestorage.googleapis.com/v0/b/accountability-566c2.firebasestorage.app/o/088529ce-52f4-4ef7-a65f-0923d5901386.png?alt=media";
@@ -53,6 +54,7 @@ export default function App() {
   const [showStarterNotes, setShowStarterNotes] = useState(false);
   const [diaryFiles, setDiaryFiles] = useState<File[]>([]);
   const [isDraggingDiary, setIsDraggingDiary] = useState(false);
+  const [genPhase, setGenPhase] = useState('writing'); // 'writing' | 'checking'
   const [recipeBook, setRecipeBook] = useState<any>(null);
   const [isGeneratingRecipes, setIsGeneratingRecipes] = useState(false);
 
@@ -288,6 +290,7 @@ export default function App() {
   const generateAIPlan = async () => {
     setView('generating');
     setError('');
+    setGenPhase('writing');
     setRecipeBook(null); // recipes belong to the old plan — don't carry them over
 
     const aiWeeks = 1;
@@ -376,7 +379,8 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
           Then set the Daily Protein Target (1.8-2.2g per kg of bodyweight) and Fibre (min 25g, aim 30g).
           Show the calculated TDEE in the targets section. The Daily Calorie Target is then set by Rule 17 below.
       2. Use South Asian meals as the foundation (Rice, roti, dal, lentils, sabzi, curry, yoghurt, eggs, legumes). No Western defaults unless requested.
-      2a. REAL, SENSIBLE MEALS ONLY — NO WEIRD COMBINATIONS: Every meal must be a real dish that people genuinely cook and eat, that the client would recognise by name and actually want to eat. Name it the way a normal person would say it (e.g. "Tuna curry with roti", "Chicken keema with chapati", "Egg bhurji on toast", "Dal with rice and a side salad", "Tuna baked potato"). NEVER invent odd mash-ups or stack ingredients together just because they are available — e.g. "Tuna roti with peppers and courgettes" is NOT a real dish and must never be written. Before writing each meal ask yourself: would a real person actually cook and eat this? If not, change it to a proper dish. If the client gave their own food list, you do NOT have to use every food on it, and you must not force foods together just to use them up — pick only the foods that genuinely belong together in a real dish and keep the rest for other meals. (Onion, garlic, ginger, tomato, spices and a little oil are always fine as a curry base, so a tuna curry or chicken masala is always possible from a short list.) For South Asian cuisines, savoury lunches and dinners should be properly seasoned dishes (curry, masala, bhuna, sabzi, keema, dal), not plain ingredients with just salt and lemon.
+      2a. ${MEAL_SENSE_RULES}
+      2b. ${TASTE_TIP_RULES}
       3. Every meal MUST include a clear protein source. Dal/lentils alone do not count as sufficient protein without another source.
       4. Fibre must come from whole foods.
       5. FAMILY COOKING: If cooking for Family or Couple, the client's individual portion (what goes on HER plate only) is ALWAYS shown first. Then add a short batch note in brackets showing total to cook. Batch note always uses grams or cups — never hand portion language. Keep it under 10 words. Examples: "(Cook ~3 cups keema total — family of 4)" or "(×2 — cook ~300g total)". For individually packaged items (eggs, chapatis, protein bars, Skyr pots) write "1 per person" — no batch calculation needed.
@@ -480,7 +484,7 @@ ${formData.availableFoods && formData.availableFoods.trim() !== '' ? `
           d. The "dailyTotals" calories figure MUST equal the real sum of that day's meals — never a made-up number that doesn't match the meals above it.
           This applies to EVERY day in EVERY week, not just day one.
 
-      ⛔ FINAL CHECK BEFORE YOU RESPOND: Re-read every meal NAME you have written and ask "is this a real dish a normal person would cook and eat?" — if any name is an odd mash-up of ingredients (see Rule 2a), rewrite it as a proper, recognisable dish. Then re-read every single meal, snack, side and ingredient you have written. If ANY banned food appears (Pork, Bacon, Ham, Alcohol, Turkey, Rotisserie Chicken or any pre-cooked roast chicken, Tempeh, Tofu, Medallions/fancy cuts, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal), REMOVE it and replace it with an approved alternative before returning your answer. Do not return the plan until it is 100% clean. THEN, for every single day, ADD UP the kcal of every meal/snack card. If the total is more than ~75 kcal below (or above) the Daily Calorie Target, the plan has FAILED — go back and increase (or trim) portion sizes until every day genuinely reaches the target, then re-check, before returning your answer. A plan that comes in hundreds of calories under target must never be returned.
+      ⛔ FINAL CHECK BEFORE YOU RESPOND: Re-read every meal NAME you have written and ask "is this a real dish a normal person would cook and eat?" — if any meal breaks the Rule 2a sense rules (an odd mash-up, a protein in the wrong dish, two main carbs, sweet mixed with savoury, a silly amount), rewrite it as a proper, recognisable dish. Then re-read every single meal, snack, side and ingredient you have written. If ANY banned food appears (Pork, Bacon, Ham, Alcohol, Turkey, Rotisserie Chicken or any pre-cooked roast chicken, Tempeh, Tofu, Medallions/fancy cuts, Prawn Masala, Curd Bengan, Grilled Salmon, Roasted Gobi, or anything non-halal), REMOVE it and replace it with an approved alternative before returning your answer. Do not return the plan until it is 100% clean. THEN, for every single day, ADD UP the kcal of every meal/snack card. If the total is more than ~75 kcal below (or above) the Daily Calorie Target, the plan has FAILED — go back and increase (or trim) portion sizes until every day genuinely reaches the target, then re-check, before returning your answer. A plan that comes in hundreds of calories under target must never be returned.
 
 ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
       COACH SUMMARY (for the "coachSummary" field): Write 1-2 short sentences, addressed to Zayb (the coach), plainly stating what you changed in this plan because of the private context above and where to find it (e.g. "Added chia and flaxseed to breakfast/lunch on Tues/Thu/Sat for the gut-health note — see portionGuide on those meals."). This is an internal admin note, never shown to the client, so speak to Zayb directly and don't repeat the tone rules.
@@ -509,7 +513,8 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
                     "portionGuide": "Exact portion sizes based on dietary approach",
                     "metrics": "X kcal | Yg P | Zg C | Wg F",
                     "prepNote": "Only if >15 mins. Max 5 words (e.g., 'Prep night before')",
-                    "swapNote": "Only include if meal uses a specific marinade, spice rub, or flavoured coating the client might want to swap. E.g. 'Not feeling this marinade? WhatsApp your coach for a quick swap! 💬' — omit entirely if no marinade involved."
+                    "swapNote": "Only include if meal uses a specific marinade, spice rub, or flavoured coating the client might want to swap. Plain wording, no slang, no emojis, e.g. 'Not keen on this flavour? WhatsApp me and I will swap it.' — omit entirely if no marinade involved.",
+                    "tasteTip": "Optional. One short plain sentence suggesting a small extra that makes this meal taste better (see Rule 2b) — omit entirely if there is no genuinely useful tip."
                   }
                 ],
                 "dailyTotals": "Calories: X | Protein: Yg | Fibre: Zg"
@@ -524,6 +529,7 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
           "dairyOrAlternatives": ["item 1"],
           "storeCupboardStaples": ["item 1"]
         },
+        "optionalExtras": ["Item — why it helps (only for very short food lists, otherwise an empty array)"],
         "tips": ["Practical tip 1", "Practical tip 2", "Practical tip 3"],
         "summary": "One-line summary of what to focus on most this week.",
         "quickWins": ["Non-negotiable 1", "Non-negotiable 2", "Non-negotiable 3"]
@@ -580,12 +586,59 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
       }
 
       const parsedData = JSON.parse(cleanText);
-      setGeneratedPlan(parsedData);
+
+      // A second pair of eyes: check every meal is something a normal person would
+      // actually eat. It never blocks the plan — if the check fails or is slow, the
+      // plan still comes through with a note saying so.
+      setStreamedChars(0);
+      setGenPhase('checking');
+      let finalPlan = parsedData;
+      let checkerNote = '';
+      let checkerChanges: string[] = [];
+      try {
+        const checkRes = await fetch('/api/generate', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: buildCheckerPrompt(parsedData, { availableFoods: formData.availableFoods, regionalCuisine: formData.regionalCuisine }) }] }],
+            model: 'claude-sonnet-5',
+            effort: 'medium'
+          }),
+          signal: AbortSignal.timeout(150000)
+        });
+        if (!checkRes.ok) throw new Error(`check failed (${checkRes.status})`);
+        const checkReader = checkRes.body!.getReader();
+        const checkDecoder = new TextDecoder();
+        let checkText = '';
+        while (true) {
+          const { done, value } = await checkReader.read();
+          if (done) break;
+          checkText += checkDecoder.decode(value, { stream: true });
+          setStreamedChars(checkText.length);
+        }
+        const fixes = parseCheckerResponse(checkText);
+        if (fixes === null) throw new Error('unreadable check result');
+        const applied = applyCheckerFixes(parsedData, fixes);
+        finalPlan = applied.plan;
+        checkerChanges = applied.changes;
+        checkerNote = checkerChanges.length === 0
+          ? 'Every meal looked sensible — nothing needed changing.'
+          : `The checker fixed ${checkerChanges.length} meal${checkerChanges.length === 1 ? '' : 's'} that didn't make sense:`;
+      } catch (checkErr: any) {
+        console.error('Meal check skipped:', checkErr);
+        checkerNote = 'The meal check did not run this time — give the meals a quick read yourself.';
+      }
+      finalPlan.checkerNote = checkerNote;
+      finalPlan.checkerChanges = checkerChanges;
+
+      setGeneratedPlan(finalPlan);
+      setGenPhase('writing');
       setStreamedChars(0);
       setView('preview');
 
     } catch (err: any) {
       console.error("Full Error:", err);
+      setGenPhase('writing');
       setError(`🚨 ERROR: ${err.message}`);
       setStreamedChars(0);
       setView('dashboard');
@@ -908,7 +961,7 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
   }
 
   if (view === 'generating') {
-    const progress = Math.min(Math.round((streamedChars / 12000) * 100), 99);
+    const progress = Math.min(Math.round((streamedChars / (genPhase === 'checking' ? 2500 : 12000)) * 100), 99);
     return (
       <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
         <Loader2 className="w-16 h-16 text-red-700 animate-spin mb-6" />
@@ -917,7 +970,9 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
             ? (streamedChars === 0 ? 'Reading Your Plan...' : 'Converting to Cups...')
             : isGeneratingRecipes
               ? (streamedChars === 0 ? 'Reading the Meal Plan...' : 'Writing the Recipes...')
-              : (streamedChars === 0 ? 'Analyzing Client Data...' : 'Writing Your Plan...')}
+              : genPhase === 'checking'
+                ? 'Checking the Meals Make Sense...'
+                : (streamedChars === 0 ? 'Analyzing Client Data...' : 'Writing Your Plan...')}
         </h2>
         <p className="text-zinc-600 max-w-md text-center mb-6">
           {isConverting
@@ -926,7 +981,9 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
               ? (streamedChars === 0
                 ? 'Working out which meals actually need a method — grab-and-eat items get skipped...'
                 : `Writing step-by-step methods and the prep session for ${formData.clientName || 'your client'}...`)
-              : (streamedChars === 0
+              : genPhase === 'checking'
+                ? 'A second pair of eyes is making sure every meal is something a real person would actually eat...'
+                : (streamedChars === 0
                 ? `Calculating TDEE, adapting for ${formData.hormonalStatus}, and sourcing ${formData.regionalCuisine} recipes within a ${formData.cookingTime} window...`
                 : `Building meals and portion guides for ${formData.clientName}...`)}
         </p>
@@ -1005,6 +1062,23 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
                   generatedPlan.coachSummary
                 )}
               </span>
+            </div>
+          </div>
+        )}
+
+        {/* Coach-only result of the automatic meal check — never printed */}
+        {generatedPlan?.checkerNote && (
+          <div className="max-w-[210mm] w-full mb-6 print:hidden px-4 md:px-0">
+            <div className={`rounded-xl px-5 py-3 text-sm font-medium border ${(generatedPlan.checkerChanges || []).length > 0 ? 'bg-sky-50 border-sky-300 text-sky-900' : generatedPlan.checkerNote.includes('did not run') ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-green-50 border-green-300 text-green-800'}`}>
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+                <span><strong>Meal check (only you see this):</strong> {generatedPlan.checkerNote}</span>
+              </div>
+              {(generatedPlan.checkerChanges || []).length > 0 && (
+                <ul className="mt-2 ml-6 space-y-1 list-disc text-xs font-normal">
+                  {generatedPlan.checkerChanges.map((c: string, i: number) => <li key={i}>{c}</li>)}
+                </ul>
+              )}
             </div>
           </div>
         )}
@@ -1216,6 +1290,16 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
                             )}
                           </div>
                         )}
+                        {(meal?.tasteTip || isEditing) && (
+                          <div className="ml-2 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                            <p className="text-xs font-black text-emerald-700 uppercase tracking-wider mb-1">Make It Tastier (optional)</p>
+                            {isEditing ? (
+                              <textarea value={meal?.tasteTip || ''} onChange={(e) => updateMeal(weekIdx, dayIdx, mealIdx, 'tasteTip', e.target.value)} rows={2} placeholder="Optional — a small tip to make this taste better. Leave blank for none." className="text-sm font-medium text-emerald-900 w-full leading-relaxed border border-emerald-200 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-emerald-400 resize-y bg-white" />
+                            ) : (
+                              <p className="text-sm font-medium text-emerald-900 leading-relaxed">{meal.tasteTip}</p>
+                            )}
+                          </div>
+                        )}
                         
                         {meal?.prepNote && (
                           <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-zinc-100 pl-2">
@@ -1281,6 +1365,25 @@ ${formData.coachNotes && formData.coachNotes.trim() !== '' ? `
                 </div>
               ))}
             </div>
+
+            {Array.isArray(generatedPlan?.optionalExtras) && generatedPlan.optionalExtras.length > 0 && (
+              <div className="relative z-10 mt-8 bg-emerald-50 p-6 rounded-2xl border border-emerald-200 shadow-sm">
+                <h3 className="font-bold text-emerald-800 uppercase tracking-wider text-sm mb-1">Optional Extras — Worth Picking Up</h3>
+                <p className="text-emerald-700 text-xs mb-4">You don't need any of these — your plan works without them. They just make things tastier or easier.</p>
+                <ul className="space-y-2.5">
+                  {generatedPlan.optionalExtras.map((item, idx) => (
+                    <li key={idx} className="flex items-start text-emerald-900 text-sm font-medium">
+                      <div className="w-4 h-4 border-2 border-emerald-300 rounded mr-3 mt-0.5 shrink-0"></div>
+                      {isEditing ? (
+                        <input value={String(item || '')} onChange={(e) => updateGenArray('optionalExtras', idx, e.target.value)} className="w-full text-emerald-900 text-sm font-medium border border-emerald-300 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-emerald-400 bg-white" />
+                      ) : (
+                        <span className="leading-snug">{String(item)}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <p className="relative z-10 mt-auto pt-8 text-zinc-400 text-xs italic text-center">
               Quantities are a guide — buy what makes sense for your household.

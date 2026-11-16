@@ -35,6 +35,10 @@ export async function POST(request: NextRequest) {
   const ALLOWED_MODELS = ['claude-haiku-4-5', 'claude-sonnet-5'];
   let requestedModel = 'claude-haiku-4-5';
   let webSearchRequested = false;
+  // Lower effort = a faster, cheaper answer. Only the meal checker asks for it.
+  // Sonnet only — Haiku 4.5 rejects the effort setting.
+  const ALLOWED_EFFORT = ['low', 'medium'];
+  let requestedEffort: string | null = null;
 
   let content: any;
 
@@ -46,6 +50,8 @@ export async function POST(request: NextRequest) {
     const modelField = formData.get('model') as string | null;
     if (modelField && ALLOWED_MODELS.includes(modelField)) requestedModel = modelField;
     webSearchRequested = formData.get('webSearch') === 'true';
+    const effortField = formData.get('effort') as string | null;
+    if (effortField && ALLOWED_EFFORT.includes(effortField)) requestedEffort = effortField;
 
     const imageBlocks = await Promise.all(images.map(async (file) => ({
       type: 'image',
@@ -62,6 +68,7 @@ export async function POST(request: NextRequest) {
     content = body.contents?.[0]?.parts?.[0]?.text || '';
     if (body.model && ALLOWED_MODELS.includes(body.model)) requestedModel = body.model;
     webSearchRequested = body.webSearch === true;
+    if (body.effort && ALLOWED_EFFORT.includes(body.effort)) requestedEffort = body.effort;
   }
 
   const payload: any = {
@@ -76,6 +83,10 @@ export async function POST(request: NextRequest) {
   // Live evidence-checking for medical/hormonal clients. The basic search version
   // works on Haiku (the dynamic-filtering versions don't). `max_uses` is enforced
   // by Anthropic, so a run never exceeds 2 searches (~2p).
+  if (requestedEffort && requestedModel === 'claude-sonnet-5') {
+    payload.output_config = { effort: requestedEffort };
+  }
+
   if (webSearchRequested) {
     payload.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }];
   }
